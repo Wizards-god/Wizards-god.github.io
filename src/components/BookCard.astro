@@ -1,0 +1,98 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Icon from './Icon.astro';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  book: CollectionEntry<'books'>;
+  hidden?: boolean;
+}
+const { book, hidden = false } = Astro.props;
+const { title, author, reflection, tags, url, year, placeholder } = book.data;
+---
+
+<li class="book" data-item data-tags={tags.join('|')} data-year={String(year)} hidden={hidden} data-reveal>
+  <article class="book__card card card--lift">
+    <div class="book__top">
+      <Icon name="book-open" size={28} class="book__icon" />
+      {
+        url && (
+          <a href={url} class="book__ext above-stretch" target="_blank" rel="noopener noreferrer" aria-label={`${title} (external link)`}>
+            <Icon name="arrow-up-right" />
+          </a>
+        )
+      }
+    </div>
+    <h2 class="book__title">{title}</h2>
+    <p class="book__author">{author} <span aria-hidden="true">·</span> <span class="book__year">read {year}</span></p>
+    <p class="book__reflection">{reflection}</p>
+    <ul class="book__tags tag-list">
+      {tags.map((t) => <li class="tag">{t}</li>)}
+      {placeholder && <li><PlaceholderTag /></li>}
+    </ul>
+  </article>
+</li>
+
+<style>
+  .book {
+    list-style: none;
+  }
+
+  .book__card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 24px 24px 20px;
+  }
+
+  .book__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    margin-bottom: 14px;
+  }
+
+  .book__top :global(.book__icon) {
+    color: var(--faint);
+  }
+
+  .book__ext {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin-right: -12px;
+    color: var(--muted);
+    transition: color var(--dur-ui) var(--ease-ui);
+  }
+
+  .book__ext:hover {
+    color: var(--text);
+  }
+
+  .book__title {
+    font-size: 18px;
+    font-weight: 560;
+    line-height: 1.3;
+  }
+
+  .book__author {
+    margin-top: 4px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+
+  .book__reflection {
+    margin: 12px 0 18px;
+    color: var(--muted);
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+
+  .book__tags {
+    margin-top: auto;
+    align-items: center;
+  }
+</style>

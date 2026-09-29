@@ -1,0 +1,209 @@
+---
+// One project, styled as a row or a card depending on the parent list's
+// data-layout ("rows" | "grid").
+import type { CollectionEntry } from 'astro:content';
+import { Image } from 'astro:assets';
+import { projectUrl } from '../lib/content';
+import Icon from './Icon.astro';
+import ProjectLinks from './ProjectLinks.astro';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+}
+const { project } = Astro.props;
+const { title, summary, stack, tags, links, thumb, placeholder, date, status } = project.data;
+const url = projectUrl(project);
+---
+
+<li class="project" data-item data-tags={tags.join('|')} data-reveal>
+  <article class="project__card card card--lift">
+    <div class="project__thumb duotone" aria-hidden="true">
+      {thumb ? <Image src={thumb} alt="" width={160} height={120} loading="lazy" decoding="async" /> : <Icon name="folder" size={28} />}
+    </div>
+    <div class="project__top">
+      <Icon name="folder" size={32} class="project__folder" />
+      <ProjectLinks links={links} title={title} class="above-stretch" />
+    </div>
+    <div class="project__body">
+      <p class="project__meta">
+        <time datetime={date.toISOString()}>{date.getUTCFullYear()}</time>
+        {status === 'in-progress' && <span class="status-chip" data-status="in-progress">in progress</span>}
+        <PlaceholderTag show={placeholder} />
+      </p>
+      <h2 class="project__title">
+        <a href={url} class="stretched-link">{title}</a>
+      </h2>
+      <p class="project__desc">{summary}</p>
+      <p class="project__stack">{stack.join(' · ')}</p>
+    </div>
+    {
+      links.github && (
+        <a href={links.github} class="project__gh link link--quiet above-stretch" target="_blank" rel="noopener noreferrer">
+          GitHub<span class="ext" aria-hidden="true">↗</span>
+        </a>
+      )
+    }
+  </article>
+</li>
+
+<style>
+  .project {
+    list-style: none;
+  }
+
+  .project__title {
+    font-size: 19px;
+    font-weight: 560;
+    line-height: 1.3;
+  }
+
+  .project__title a {
+    color: var(--text);
+    transition: color var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .project__card:hover .project__title a {
+      color: var(--accent);
+    }
+    .project__card:hover .project__thumb :global(img) {
+      filter: none;
+    }
+    .project__card:hover .project__thumb::after {
+      opacity: 0;
+    }
+  }
+
+  .project__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 6px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .project__desc {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .project__stack {
+    margin-top: 10px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+
+  .project__gh {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* ---------------- rows ---------------- */
+  :global([data-layout='rows']) .project__card {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 6px 20px;
+    padding: 20px 0;
+    background: transparent;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    :global([data-layout='rows']) .project__card:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+
+  :global([data-layout='rows']) .project__top {
+    display: none;
+  }
+
+  :global([data-layout='rows']) .project__thumb {
+    display: grid;
+    place-items: center;
+    width: 96px;
+    height: 72px;
+    align-self: start;
+    margin-top: 4px;
+  }
+
+  :global([data-layout='rows']) .project__thumb :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  :global([data-layout='rows']) .project__gh {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 2px;
+  }
+
+  @media (min-width: 640px) {
+    :global([data-layout='rows']) .project__card {
+      grid-template-columns: 128px 1fr auto;
+    }
+    :global([data-layout='rows']) .project__thumb {
+      width: 128px;
+      height: 96px;
+    }
+    :global([data-layout='rows']) .project__gh {
+      grid-column: 3;
+      grid-row: 1;
+      align-self: start;
+      margin-top: 22px;
+    }
+  }
+
+  /* ---------------- cards ---------------- */
+  :global([data-layout='grid']) .project__card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 26px 26px 22px;
+  }
+
+  :global([data-layout='grid']) .project__thumb {
+    display: none;
+  }
+
+  :global([data-layout='grid']) .project__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+
+  :global([data-layout='grid']) .project__top :global(.project__folder) {
+    color: var(--faint);
+  }
+
+  :global([data-layout='grid']) .project__top :global(.project-links) {
+    margin-right: -12px;
+  }
+
+  :global([data-layout='grid']) .project__body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  :global([data-layout='grid']) .project__stack {
+    margin-top: auto;
+    padding-top: 18px;
+  }
+
+  :global([data-layout='grid']) .project__gh {
+    display: none;
+  }
+</style>

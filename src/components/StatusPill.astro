@@ -1,0 +1,62 @@
+---
+import { site } from '../data/site';
+---
+
+<p class="status-pill enter-chrome" style="--enter-anim: enter-up; --i: 1">
+  <span class="status-pill__dot" aria-hidden="true"></span>
+  <span class="status-pill__text">{site.status.text}</span>
+</p>
+
+<style>
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 100%;
+    padding: 6px 14px 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    line-height: 1.4;
+  }
+
+  .status-pill__dot {
+    position: relative;
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .status-pill__dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: ring-pulse calc(2.6s * var(--slow)) ease-out infinite;
+  }
+
+  @keyframes ring-pulse {
+    0% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    70%,
+    100% {
+      opacity: 0;
+      transform: scale(2.8);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .status-pill__dot::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+</style>

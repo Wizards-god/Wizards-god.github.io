@@ -1,0 +1,397 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import PlaceholderTag from '../components/PlaceholderTag.astro';
+import { site } from '../data/site';
+import { education, skills } from '../data/about';
+import { getExperience, getProjects, getAwards, getCoursesByTerm, projectUrl } from '../lib/content';
+import { dateRange, monthYear } from '../lib/format';
+
+const show = (p?: boolean) => site.showPlaceholders || !p;
+const jobs = await getExperience();
+const projects = (await getProjects()).slice(0, 4);
+const awards = await getAwards();
+const courses = (await getCoursesByTerm()).flatMap((g) => g.courses).filter((c) => c.data.status !== 'upcoming');
+const uiuc = education[0];
+---
+
+<BaseLayout
+  title="Resume"
+  description="Resume of Parjanya Shankar: education, experience, projects, skills and awards. Also available as a PDF."
+  ogImage="/og/resume.png"
+>
+  <div class="page wrap resume-page">
+    <div class="resume-actions" data-enter style="--i: 0">
+      <a href="/" class="link link--quiet back">
+        <Icon name="arrow-left" size={14} /> back to site
+      </a>
+      <a href={site.resume} class="btn btn--primary" download="Parjanya-Shankar-Resume.pdf">
+        <Icon name="download" size={16} /> Download PDF
+      </a>
+    </div>
+
+    <article class="resume" data-enter style="--i: 1">
+      <header class="resume__head">
+        <h1 class="resume__name" tabindex="-1">{site.name}</h1>
+        <p class="resume__contact">
+          <a href={site.domain} class="link">parjanya.me</a>
+          <span aria-hidden="true">·</span>
+          <a href={`mailto:${site.email}`} class="link">{site.email}</a>
+          <span aria-hidden="true">·</span>
+          <a href={site.socials.linkedin.url} class="link">linkedin.com/in/parjanya-s</a>
+          <span aria-hidden="true">·</span>
+          <a href={site.socials.github.url} class="link">github.com/Wizards-god</a>
+        </p>
+      </header>
+
+      <section class="resume__section" aria-labelledby="r-edu">
+        <h2 id="r-edu" class="resume__h">Education</h2>
+        <div class="entry">
+          <div class="entry__row">
+            <p class="entry__title">{uiuc.title}</p>
+            <p class="entry__date">Aug 2026 – May 2030 (expected)</p>
+          </div>
+          <div class="entry__row">
+            <p class="entry__sub">{uiuc.subtitle}</p>
+            <p class="entry__date">Urbana, IL</p>
+          </div>
+          {
+            courses.length > 0 && (
+              <p class="entry__text">
+                <span class="entry__label">Coursework:</span> {courses.map((c) => `${c.data.title} (${c.data.code})`).join(', ')}
+                {courses.some((c) => c.data.placeholder) && (
+                  <>
+                    {' '}
+                    <PlaceholderTag />
+                  </>
+                )}
+              </p>
+            )
+          }
+        </div>
+        {
+          education.slice(1).filter((e) => show(e.placeholder)).map((e) => (
+            <div class="entry">
+              <div class="entry__row">
+                <p class="entry__title">
+                  {e.title} <PlaceholderTag show={!!e.placeholder} />
+                </p>
+                <p class="entry__date">{e.end ? e.end.slice(0, 4) : ''}</p>
+              </div>
+              <p class="entry__sub">{e.subtitle}</p>
+            </div>
+          ))
+        }
+      </section>
+
+      {
+        jobs.length > 0 && (
+          <section class="resume__section" aria-labelledby="r-exp">
+            <h2 id="r-exp" class="resume__h">Experience</h2>
+            {jobs.map((j) => (
+              <div class="entry">
+                <div class="entry__row">
+                  <p class="entry__title">
+                    {j.data.role}, {j.data.company} <PlaceholderTag show={j.data.placeholder} />
+                  </p>
+                  <p class="entry__date">{dateRange(j.data.start, j.data.end)}</p>
+                </div>
+                <p class="entry__sub">{j.data.location}</p>
+                <ul class="entry__bullets">
+                  {j.data.bullets.map((b) => (
+                    <li>{b}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </section>
+        )
+      }
+
+      {
+        projects.length > 0 && (
+          <section class="resume__section" aria-labelledby="r-proj">
+            <h2 id="r-proj" class="resume__h">Projects</h2>
+            {projects.map((p) => (
+              <div class="entry">
+                <div class="entry__row">
+                  <p class="entry__title">
+                    <a href={projectUrl(p)} class="link">
+                      {p.data.title}
+                    </a>{' '}
+                    <span class="entry__stack">{p.data.stack.join(', ')}</span> <PlaceholderTag show={p.data.placeholder} />
+                  </p>
+                  <p class="entry__date">{monthYear(p.data.date)}</p>
+                </div>
+                <p class="entry__text">{p.data.summary}</p>
+              </div>
+            ))}
+          </section>
+        )
+      }
+
+      {
+        show(skills.placeholder) && (
+          <section class="resume__section" aria-labelledby="r-skills">
+            <h2 id="r-skills" class="resume__h">
+              Skills <PlaceholderTag show={skills.placeholder} />
+            </h2>
+            <dl class="skills">
+              {skills.groups.map((g) => (
+                <div class="skills__row">
+                  <dt>{g.label}</dt>
+                  <dd>{g.items.join(', ')}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )
+      }
+
+      {
+        awards.length > 0 && (
+          <section class="resume__section" aria-labelledby="r-awards">
+            <h2 id="r-awards" class="resume__h">Awards</h2>
+            {awards.map((a) => (
+              <div class="entry">
+                <div class="entry__row">
+                  <p class="entry__title">
+                    {a.data.title} <PlaceholderTag show={a.data.placeholder} />
+                  </p>
+                  <p class="entry__date">{monthYear(a.data.date)}</p>
+                </div>
+                <p class="entry__sub">{a.data.issuer}</p>
+              </div>
+            ))}
+          </section>
+        )
+      }
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .resume-page {
+    max-width: calc(820px + var(--pad-x) * 2);
+  }
+
+  .resume-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .resume {
+    padding: clamp(24px, 5vw, 56px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+
+  .resume__head {
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .resume__name {
+    font-size: clamp(28px, 4vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+
+  .resume__contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 10px;
+    margin-top: 8px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+
+  .resume__contact .link {
+    color: var(--muted);
+  }
+
+  .resume__section {
+    margin-top: 26px;
+  }
+
+  .resume__h {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .entry + .entry {
+    margin-top: 14px;
+  }
+
+  .entry__row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0 16px;
+  }
+
+  .entry__title {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .entry__title .link {
+    color: var(--text);
+  }
+
+  .entry__stack {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    font-weight: 400;
+  }
+
+  .entry__sub {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .entry__date {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .entry__text {
+    margin-top: 4px;
+  }
+
+  .entry__label {
+    color: var(--text);
+  }
+
+  .entry__bullets {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    list-style: disc;
+  }
+
+  .entry__bullets li::marker {
+    color: var(--faint);
+  }
+
+  .skills {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+  }
+
+  .skills__row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 12px;
+  }
+
+  .skills__row dt {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .skills__row dd {
+    margin: 0;
+  }
+
+  @media print {
+    @page {
+      size: letter;
+      margin: 0.55in 0.6in;
+    }
+
+    :global(html),
+    :global(body) {
+      background: #fff !important;
+    }
+
+    :global(.site-header),
+    :global(.site-footer),
+    :global(.rails),
+    :global(.drawer-root),
+    :global([data-ask]),
+    :global(.glow),
+    :global(.shutter),
+    :global(.theme-curtain),
+    :global(.toast),
+    :global(.skip-link),
+    .resume-actions {
+      display: none !important;
+    }
+
+    .resume-page {
+      max-width: none;
+      padding: 0 !important;
+    }
+
+    :global(.page) {
+      padding: 0 !important;
+    }
+
+    .resume {
+      --text: #111;
+      --muted: #333;
+      --faint: #555;
+      --border: #ccc;
+      padding: 0;
+      border: 0;
+      background: #fff;
+      color: #333;
+      font-size: 10pt;
+      line-height: 1.45;
+    }
+
+    .resume :global(.link) {
+      background: none;
+    }
+
+    .resume__section {
+      margin-top: 14px;
+    }
+
+    .resume__h {
+      margin-bottom: 6px;
+    }
+
+    .entry + .entry {
+      margin-top: 8px;
+    }
+
+    .entry__bullets {
+      margin-top: 2px;
+    }
+
+    .entry,
+    .resume__h {
+      break-inside: avoid;
+    }
+  }
+</style>

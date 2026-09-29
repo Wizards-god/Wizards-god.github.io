@@ -1,0 +1,24 @@
+---
+// Plain section title (no numbering) with an optional hairline rule to the right.
+interface Props {
+  id?: string;
+  rule?: boolean;
+  as?: 'h2' | 'h3';
+  centered?: boolean;
+}
+const { id, rule = true, as: Tag = 'h2', centered = false } = Astro.props;
+---
+
+<Tag
+  id={id}
+  class:list={['section-heading', { 'section-heading--rule': rule && !centered, 'section-heading--center': centered }]}
+  data-reveal
+>
+  <slot />
+</Tag>
+
+<style>
+  .section-heading--center {
+    justify-content: center;
+  }
+</style>

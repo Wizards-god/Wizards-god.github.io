@@ -1,0 +1,65 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import Icon from './Icon.astro';
+
+interface Props {
+  links: CollectionEntry<'projects'>['data']['links'];
+  title: string;
+  class?: string;
+}
+const { links, title, class: className } = Astro.props;
+const items = [
+  links.github && { href: links.github, icon: 'github' as const, label: `${title} on GitHub` },
+  links.live && { href: links.live, icon: 'arrow-up-right' as const, label: `${title}, live site` },
+  links.paper && { href: links.paper, icon: 'file-text' as const, label: `${title}, paper` },
+].filter(Boolean) as { href: string; icon: 'github' | 'arrow-up-right' | 'file-text'; label: string }[];
+---
+
+{
+  items.length > 0 && (
+    <ul class:list={['project-links', className]}>
+      {items.map((l) => (
+        <li>
+          <a href={l.href} class="project-links__a" target="_blank" rel="noopener noreferrer" aria-label={l.label}>
+            <Icon name={l.icon} />
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+<style>
+  .project-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .project-links__a {
+    position: relative;
+    z-index: 2;
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    color: var(--muted);
+    transition:
+      color var(--dur-ui) var(--ease-ui),
+      transform var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .project-links__a:hover {
+      color: var(--text);
+      transform: translateY(-3px);
+    }
+  }
+
+  .project-links__a:focus-visible {
+    color: var(--text);
+  }
+</style>

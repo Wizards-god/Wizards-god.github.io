@@ -1,0 +1,93 @@
+---
+import type { TimelineItem } from '../data/about';
+import { yearRange } from '../lib/format';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  items: TimelineItem[];
+}
+const { items } = Astro.props;
+---
+
+<ol class="timeline" data-reveal-stagger>
+  {
+    items.map((item) => (
+      <li class="timeline__item" data-reveal>
+        <span class="timeline__dot" aria-hidden="true" />
+        <p class="timeline__date">{yearRange(item.start, item.end)}</p>
+        <p class="timeline__title">
+          {item.title} <PlaceholderTag show={!!item.placeholder} />
+        </p>
+        <p class="timeline__subtitle">{item.subtitle}</p>
+        {item.note && <p class="timeline__note">{item.note}</p>}
+      </li>
+    ))
+  }
+</ol>
+
+<style>
+  .timeline {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 28px;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .timeline__item {
+    position: relative;
+  }
+
+  .timeline__item + .timeline__item {
+    margin-top: 28px;
+  }
+
+  .timeline__dot {
+    position: absolute;
+    left: -28px;
+    top: 6px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 1.5px solid var(--accent);
+  }
+
+  .timeline__item:first-child .timeline__dot {
+    background: var(--accent);
+  }
+
+  .timeline__date {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .timeline__title {
+    margin-top: 2px;
+    color: var(--text);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .timeline__subtitle {
+    color: var(--muted);
+    font-size: 16px;
+  }
+
+  .timeline__note {
+    margin-top: 4px;
+    color: var(--faint);
+    font-size: 14.5px;
+  }
+</style>

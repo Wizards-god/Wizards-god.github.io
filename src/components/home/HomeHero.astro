@@ -1,0 +1,115 @@
+---
+import { site } from '../../data/site';
+import StatusPill from '../StatusPill.astro';
+import AsciiChart from '../AsciiChart.astro';
+import Icon from '../Icon.astro';
+---
+
+<section class="hero wrap" aria-labelledby="hero-name">
+  <div class="hero__inner">
+    <StatusPill />
+    <p class="hero__greeting" data-enter style="--i: 1">hi, i'm</p>
+    <h1 id="hero-name" class="hero__name" data-enter style="--i: 2" tabindex="-1">{site.name}</h1>
+    <div class="hero__grid">
+      <div class="hero__copy">
+        <p class="hero__position" data-enter style="--i: 3">{site.tagline}</p>
+        <p class="hero__bio" data-enter style="--i: 4">
+          First-year Computer Science student at the University of Illinois Urbana-Champaign, minoring in
+          Mathematics. Working toward quantitative research: probability, algorithms, and code that is both fast
+          and correct.
+        </p>
+        <div class="hero__actions" data-enter style="--i: 5">
+          <a href="/resume" class="btn btn--primary">
+            <Icon name="file-text" size={16} />
+            Resume
+          </a>
+          <a href={`mailto:${site.email}`} class="btn">
+            <Icon name="mail" size={16} />
+            Email
+          </a>
+          <span class="hero__links">
+            <a href={site.socials.github.url} class="link link--quiet" target="_blank" rel="noopener noreferrer">GitHub<span class="ext" aria-hidden="true">↗</span></a>
+            <a href={site.socials.linkedin.url} class="link link--quiet" target="_blank" rel="noopener noreferrer">LinkedIn<span class="ext" aria-hidden="true">↗</span></a>
+          </span>
+        </div>
+      </div>
+      <AsciiChart />
+    </div>
+  </div>
+</section>
+
+<style>
+  .hero {
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+    min-height: 100svh;
+    padding-top: calc(var(--header-h) + 24px);
+    padding-bottom: 64px;
+  }
+
+  .hero__inner {
+    width: 100%;
+  }
+
+  .hero__greeting {
+    margin: 28px 0 12px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: clamp(14px, 1.6vw, 16px);
+    letter-spacing: 0.02em;
+  }
+
+  .hero__name {
+    color: var(--text);
+    font-size: clamp(44px, 8vw, 80px);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+  }
+
+  .hero__grid {
+    display: grid;
+    gap: 40px;
+    margin-top: 22px;
+  }
+
+  .hero__position {
+    color: var(--muted);
+    font-size: clamp(19px, 2.4vw, 24px);
+    font-weight: 450;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+
+  .hero__bio {
+    max-width: 540px;
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: clamp(16px, 1.6vw, 18px);
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 12px;
+    margin-top: 36px;
+  }
+
+  .hero__links {
+    display: inline-flex;
+    gap: 18px;
+    margin-left: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  @media (min-width: 900px) {
+    .hero__grid {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 48px;
+    }
+  }
+</style>

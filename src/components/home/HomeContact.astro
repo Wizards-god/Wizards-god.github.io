@@ -1,0 +1,54 @@
+---
+import { site } from '../../data/site';
+import CopyEmail from '../CopyEmail.astro';
+import Icon from '../Icon.astro';
+---
+
+<section id="contact" class="section wrap contact" aria-labelledby="contact-title">
+  <p class="eyebrow" data-reveal>What's next?</p>
+  <h2 id="contact-title" class="contact__title" data-reveal>Say hello</h2>
+  <p class="contact__text" data-reveal>
+    Research, internships, a question about something on this site, or just to talk shop: my inbox is open.
+  </p>
+  <div class="contact__actions" data-reveal>
+    <a href={`mailto:${site.email}`} class="btn btn--primary contact__btn">
+      <Icon name="mail" size={16} />
+      Email me
+    </a>
+    <CopyEmail />
+  </div>
+</section>
+
+<style>
+  .contact {
+    max-width: calc(620px + var(--pad-x) * 2);
+    margin-top: 40px;
+    margin-bottom: 40px;
+    text-align: center;
+  }
+
+  .contact__title {
+    margin-top: 10px;
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+  }
+
+  .contact__text {
+    margin-top: 18px;
+  }
+
+  .contact__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    margin-top: 40px;
+  }
+
+  .contact__btn {
+    min-height: 52px;
+    padding: 0 28px;
+    font-size: 14px;
+  }
+</style>

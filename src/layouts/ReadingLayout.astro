@@ -1,0 +1,68 @@
+---
+// Narrow (680px) column for long-form pages: project case studies and posts.
+import 'katex/dist/katex.min.css';
+import BaseLayout from './BaseLayout.astro';
+import type { SeoProps } from '../components/Head.astro';
+import Icon from '../components/Icon.astro';
+
+interface Props extends SeoProps {
+  back?: { href: string; label: string };
+}
+
+const { back, ...seo } = Astro.props;
+---
+
+<BaseLayout {...seo}>
+  <article class="page reading">
+    <div class="wrap wrap--reading">
+      {
+        back && (
+          <a href={back.href} class="reading__back label" data-enter style="--i: 0">
+            <Icon name="arrow-left" size={14} />
+            {back.label}
+          </a>
+        )
+      }
+      <header class="reading__header">
+        <slot name="header" />
+      </header>
+      <slot name="before" />
+      <div class="prose reading__body" data-reveal>
+        <slot />
+      </div>
+      <slot name="after" />
+    </div>
+  </article>
+</BaseLayout>
+
+<style>
+  .reading__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-bottom: 12px;
+    transition: color var(--dur-ui) var(--ease-ui);
+  }
+
+  .reading__back :global(svg) {
+    transition: transform var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .reading__back:hover {
+      color: var(--text);
+    }
+    .reading__back:hover :global(svg) {
+      transform: translateX(-3px);
+    }
+  }
+
+  .reading__header {
+    margin-bottom: 40px;
+  }
+
+  .reading__body {
+    margin-top: 8px;
+  }
+</style>

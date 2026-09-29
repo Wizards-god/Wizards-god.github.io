@@ -1,0 +1,190 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { Picture } from 'astro:assets';
+import { projectUrl } from '../lib/content';
+import ProjectLinks from './ProjectLinks.astro';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+  flip?: boolean;
+}
+const { project, flip = false } = Astro.props;
+const { title, summary, stack, links, cover, coverAlt, placeholder } = project.data;
+const url = projectUrl(project);
+---
+
+<article class:list={['featured', { 'featured--flip': flip }]} data-reveal>
+  <div class="featured__text">
+    <p class="eyebrow">Featured project</p>
+    <h3 class="featured__title">
+      <a href={url} class="featured__link">{title}</a>
+      <PlaceholderTag show={placeholder} />
+    </h3>
+    <div class="featured__desc">
+      <p>{summary}</p>
+    </div>
+    <ul class="featured__stack">
+      {stack.map((s) => <li>{s}</li>)}
+    </ul>
+    <ProjectLinks links={links} title={title} class="featured__links" />
+  </div>
+
+  {
+    cover && (
+      <a href={url} class="featured__image" tabindex="-1" aria-hidden="true">
+        <span class="duotone">
+          <Picture
+            src={cover}
+            alt={coverAlt}
+            formats={['avif']}
+            fallbackFormat="webp"
+            widths={[480, 720, 1080]}
+            sizes="(min-width: 1000px) 580px, (min-width: 768px) 58vw, 100vw"
+            loading="lazy"
+            decoding="async"
+          />
+        </span>
+      </a>
+    )
+  }
+</article>
+
+<style>
+  .featured {
+    position: relative;
+    display: grid;
+    gap: 20px;
+  }
+
+  .featured + .featured {
+    margin-top: 72px;
+  }
+
+  .featured__image {
+    display: block;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    grid-row: 1;
+  }
+
+  .featured__image :global(img) {
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+  }
+
+  .featured__text {
+    position: relative;
+    z-index: 2;
+    grid-row: 2;
+  }
+
+  .featured__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin: 6px 0 18px;
+    font-size: clamp(22px, 3vw, 28px);
+  }
+
+  .featured__link {
+    color: var(--text);
+    transition: color var(--dur-ui) var(--ease-ui);
+  }
+
+  .featured__desc {
+    padding: 22px 24px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--muted);
+    font-size: 16.5px;
+    line-height: 1.6;
+  }
+
+  .featured__stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    list-style: none;
+    margin: 20px 0 6px;
+    padding: 0;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  :global(.featured__links) {
+    margin-left: -12px;
+  }
+
+  @media (min-width: 768px) {
+    .featured {
+      grid-template-columns: repeat(12, 1fr);
+      align-items: center;
+      gap: 10px;
+    }
+
+    .featured + .featured {
+      margin-top: 110px;
+    }
+
+    .featured__image {
+      grid-column: 1 / 8;
+      grid-row: 1;
+    }
+
+    .featured__text {
+      grid-column: 7 / -1;
+      grid-row: 1;
+      text-align: right;
+    }
+
+    .featured__title {
+      justify-content: flex-end;
+    }
+
+    .featured__stack {
+      justify-content: flex-end;
+    }
+
+    :global(.featured__links) {
+      justify-content: flex-end;
+      margin-left: 0;
+      margin-right: -12px;
+    }
+
+    .featured--flip .featured__image {
+      grid-column: 6 / -1;
+    }
+
+    .featured--flip .featured__text {
+      grid-column: 1 / 7;
+      text-align: left;
+    }
+
+    .featured--flip .featured__title,
+    .featured--flip .featured__stack,
+    .featured--flip :global(.featured__links) {
+      justify-content: flex-start;
+    }
+
+    .featured--flip :global(.featured__links) {
+      margin-left: -12px;
+      margin-right: 0;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .featured__link:hover {
+      color: var(--accent);
+    }
+    .featured:hover .featured__image :global(img) {
+      filter: none;
+    }
+    .featured:hover .featured__image .duotone::after {
+      opacity: 0;
+    }
+  }
+</style>

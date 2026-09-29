@@ -1,0 +1,136 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectItem from '../../components/ProjectItem.astro';
+import { getProjects } from '../../lib/content';
+
+const projects = await getProjects();
+const tagCounts = new Map<string, number>();
+projects.forEach((p) => p.data.tags.forEach((t) => tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)));
+const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
+---
+
+<BaseLayout
+  title="Projects"
+  description="Projects by Parjanya Shankar, each with a case study: the problem, the approach, results and limitations."
+  ogImage="/og/projects.png"
+>
+  <div class="page wrap">
+    <header class="head">
+      <p class="eyebrow" data-enter style="--i: 0">projects</p>
+      <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Things I've built</h1>
+      <p class="lede" data-enter style="--i: 2">
+        Each project has a write-up: the problem, the approach, what worked, and what didn't.
+      </p>
+    </header>
+
+    <div data-filter-root data-noun="projects">
+      <div class="controls js-only" data-enter style="--i: 3">
+        <div class="chips" role="group" aria-label="Filter by tag">
+          <button type="button" class="chip" data-filter-key="tags" data-filter-value="all" aria-pressed="true">all</button>
+          {
+            tags.map((t) => (
+              <button type="button" class="chip" data-filter-key="tags" data-filter-value={t} aria-pressed="false">
+                {t}
+              </button>
+            ))
+          }
+        </div>
+        <div class="view-toggle" role="group" aria-label="Layout">
+          <button type="button" class="chip" data-view="rows" aria-pressed="true">rows</button>
+          <button type="button" class="chip" data-view="grid" aria-pressed="false">cards</button>
+        </div>
+      </div>
+
+      <ul class="project-list" data-filter-list data-layout="rows" data-reveal-stagger>
+        {projects.map((p) => <ProjectItem project={p} />)}
+      </ul>
+      <p class="empty" data-filter-empty hidden>No projects with that tag yet.</p>
+      <p class="visually-hidden" aria-live="polite" data-filter-status></p>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .head {
+    margin-bottom: 40px;
+  }
+
+  .head .lede {
+    margin-top: 14px;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  :global(html:not(.js)) .js-only {
+    display: none;
+  }
+
+  .chips,
+  .view-toggle {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    transition:
+      background-color var(--dur-ui) var(--ease-ui),
+      border-color var(--dur-ui) var(--ease-ui),
+      color var(--dur-ui) var(--ease-ui);
+  }
+
+  .chip[aria-pressed='true'] {
+    border-color: var(--faint);
+    color: var(--text);
+    background: var(--accent-tint);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .chip:hover {
+      color: var(--text);
+      border-color: var(--faint);
+    }
+  }
+
+  .chip:active {
+    transform: scale(0.97);
+  }
+
+  .project-list {
+    margin: 0;
+    padding: 0;
+  }
+
+  .project-list[data-layout='grid'] {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .project-list[data-layout='rows'] {
+    border-top: 1px solid var(--border);
+  }
+
+  .empty {
+    padding: 40px 0;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+</style>

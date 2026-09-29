@@ -1,0 +1,357 @@
+---
+// Floating "ask" box. Answers come from /ask-index.json, a keyword index of
+// this site built at build time. There is no AI and no server behind it.
+import Icon from './Icon.astro';
+
+const suggestions = ['What are you studying?', 'How do I contact you?', 'Where is your resume?', 'What are you building?'];
+---
+
+<div class="ask" data-ask transition:persist="ask">
+  <button type="button" class="ask__open" data-ask-open aria-expanded="false" aria-controls="ask-panel">
+    <Icon name="terminal" size={16} />
+    <span class="ask__label">ask</span>
+  </button>
+  <div class="ask__backdrop" data-ask-backdrop hidden></div>
+  <section
+    id="ask-panel"
+    class="ask__panel"
+    data-ask-panel
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ask-title"
+    hidden
+  >
+    <header class="ask__head">
+      <h2 id="ask-title" class="ask__title"><span class="ask__prompt">&gt;</span> ask</h2>
+      <p class="ask__note">offline · searches this site, no AI</p>
+      <button type="button" class="ask__close" data-ask-close aria-label="Close">
+        <Icon name="x" size={18} />
+      </button>
+    </header>
+    <div class="ask__body">
+      <ul class="ask__suggest" aria-label="Suggested questions">
+        {
+          suggestions.map((s) => (
+            <li>
+              <button type="button" class="ask__chip" data-ask-suggest>
+                {s}
+              </button>
+            </li>
+          ))
+        }
+      </ul>
+      <ol class="ask__log" data-ask-log aria-live="polite"></ol>
+    </div>
+    <form class="ask__form" data-ask-form>
+      <label for="ask-input" class="visually-hidden">Ask a question about this site</label>
+      <span class="ask__prompt" aria-hidden="true">&gt;</span>
+      <input
+        id="ask-input"
+        class="ask__input"
+        data-ask-input
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="ask about projects, courses, contact…"
+      />
+      <button type="submit" class="ask__send" aria-label="Ask">
+        <Icon name="send" size={16} />
+      </button>
+    </form>
+  </section>
+</div>
+
+<style>
+  :global(html:not(.js)) .ask {
+    display: none;
+  }
+
+  .ask__open {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: var(--z-ask);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    transition:
+      color var(--dur-ui) var(--ease-ui),
+      border-color var(--dur-ui) var(--ease-ui),
+      transform var(--dur-ui) var(--ease-ui);
+  }
+
+  /* Phones: icon-only so the pill covers less of the page. */
+  @media (max-width: 599px) {
+    .ask__open {
+      width: 44px;
+      padding: 0;
+      justify-content: center;
+    }
+    .ask__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    /* Clear the right rail (40px inset + 40px wide). */
+    .ask__open {
+      right: 100px;
+      bottom: 24px;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ask__open:hover {
+      color: var(--text);
+      border-color: var(--faint);
+      transform: translateY(-2px);
+    }
+  }
+
+  .ask__open:active {
+    transform: scale(0.97);
+  }
+
+  :global(html.intro-active) .ask__open,
+  :global(html.menu-open) .ask__open {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ask__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-ask);
+    background: rgb(0 0 0 / 0.25);
+  }
+
+  .ask__panel {
+    position: fixed;
+    right: 16px;
+    bottom: 72px;
+    z-index: calc(var(--z-ask) + 1);
+    display: flex;
+    flex-direction: column;
+    width: min(420px, calc(100vw - 32px));
+    max-height: min(560px, calc(100dvh - 120px));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    overflow: hidden;
+  }
+
+  .ask__panel[hidden] {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .ask__panel {
+      right: 100px;
+      bottom: 80px;
+    }
+  }
+
+  /* Phones: a bottom sheet. */
+  @media (max-width: 599px) {
+    .ask__panel {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      max-height: 85dvh;
+      border-radius: 14px 14px 0 0;
+      border-bottom: 0;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
+  .ask__head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 12px 8px 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ask__title {
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .ask__prompt {
+    color: var(--accent);
+  }
+
+  .ask__note {
+    grid-column: 1;
+    color: var(--faint);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .ask__close {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+    color: var(--faint);
+  }
+
+  .ask__close:hover {
+    color: var(--text);
+  }
+
+  .ask__body {
+    flex: 1 1 auto;
+    padding: 14px 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ask__suggest {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+  }
+
+  .ask__chip {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    transition:
+      background-color var(--dur-ui) var(--ease-ui),
+      color var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ask__chip:hover {
+      background: var(--accent-tint);
+      color: var(--text);
+    }
+  }
+
+  .ask__log {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+  }
+
+  .ask__log :global(.ask__q) {
+    color: var(--text);
+  }
+
+  .ask__log :global(.ask__a) {
+    padding-left: 14px;
+    border-left: 1px solid var(--border);
+  }
+
+  .ask__log :global(.ask__a p + a),
+  .ask__log :global(.ask__see) {
+    display: inline-block;
+    margin-top: 4px;
+  }
+
+  .ask__log :global(.ask__see) {
+    display: block;
+    color: var(--faint);
+  }
+
+  .ask__form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 8px 8px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .ask__input {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 16px;
+  }
+
+  @media (min-width: 600px) {
+    .ask__input {
+      font-size: 13px;
+    }
+  }
+
+  .ask__input::placeholder {
+    color: var(--faint);
+  }
+
+  .ask__input:focus-visible {
+    outline: none;
+  }
+
+  .ask__form:focus-within {
+    box-shadow: inset 0 0 0 1px var(--faint);
+  }
+
+  .ask__send {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--faint);
+  }
+
+  .ask__send:hover {
+    color: var(--text);
+    background: var(--accent-tint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ask__open {
+      transition: none;
+    }
+  }
+</style>

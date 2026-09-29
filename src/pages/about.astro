@@ -1,0 +1,283 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SectionHeading from '../components/SectionHeading.astro';
+import Timeline from '../components/Timeline.astro';
+import AwardList from '../components/AwardList.astro';
+import PlaceholderTag from '../components/PlaceholderTag.astro';
+import Icon from '../components/Icon.astro';
+import portrait from '../assets/portrait-placeholder.png';
+import { bio, education, currently, interests, languages } from '../data/about';
+import { getAwards } from '../lib/content';
+import { fullDate } from '../lib/format';
+import { personJsonLd } from '../lib/seo';
+import { site } from '../data/site';
+
+const awards = await getAwards();
+const show = (p?: boolean) => site.showPlaceholders || !p;
+const currentItems = currently.items.filter((c) => show(c.placeholder));
+---
+
+<BaseLayout
+  title="About"
+  description="About Parjanya Shankar: Computer Science at UIUC (Math minor, Class of 2030), background, what he's working on now, and awards."
+  ogImage="/og/about.png"
+  jsonLd={[personJsonLd]}
+>
+  <div class="page wrap">
+    <header class="about-head">
+      <p class="eyebrow" data-enter style="--i: 0">about</p>
+      <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Hi, I'm Parjanya.</h1>
+    </header>
+
+    <div class="about-intro">
+      <div class="about-intro__text" data-enter style="--i: 2">
+        {bio.long.map((p) => <p>{p}</p>)}
+      </div>
+      <div class="about-intro__photo framed-wrap" data-enter style="--i: 3">
+        <span class="framed">
+          <span class="duotone">
+            <Image
+              src={portrait}
+              alt="Placeholder portrait: a halftone letter p."
+              widths={[320, 480, 720]}
+              sizes="(min-width: 768px) 320px, 80vw"
+              loading="eager"
+            />
+          </span>
+        </span>
+        <span class="about-intro__tag"><PlaceholderTag /></span>
+      </div>
+    </div>
+
+    <section class="section" aria-labelledby="background">
+      <SectionHeading id="background">Background</SectionHeading>
+      <Timeline items={education.filter((e) => show(e.placeholder))} />
+    </section>
+
+    <section class="section" aria-labelledby="currently">
+      <SectionHeading id="currently">Currently</SectionHeading>
+      <ul class="currently" data-reveal>
+        {
+          currentItems.map((c) => (
+            <li class="currently__item">
+              <span class="currently__label">{c.label}</span>
+              <span class="currently__text">
+                {c.href ? (
+                  <a href={c.href} class="link link--underlined">
+                    {c.text}
+                  </a>
+                ) : (
+                  c.text
+                )}{' '}
+                <PlaceholderTag show={!!c.placeholder} />
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+      <p class="label currently__updated" data-reveal>updated {fullDate(new Date(currently.updated))}</p>
+    </section>
+
+    <section class="section two-col" aria-label="Interests and languages">
+      {
+        show(interests.placeholder) && (
+          <div data-reveal>
+            <h2 class="sub-heading">
+              Interests <PlaceholderTag show={interests.placeholder} />
+            </h2>
+            <ul class="chip-list">
+              {interests.items.map((i) => (
+                <li>{i}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+      {
+        show(languages.placeholder) && (
+          <div data-reveal>
+            <h2 class="sub-heading">
+              Languages <PlaceholderTag show={languages.placeholder} />
+            </h2>
+            <ul class="chip-list">
+              {languages.items.map((l) => (
+                <li>{l}</li>
+              ))}
+            </ul>
+            <p class="hint">
+              Hover or focus the <span class="mono">parjanya.</span> wordmark in the header: the <span class="mono">p</span>{' '}
+              cycles through Telugu <span lang="te">ప</span>, Kannada <span lang="kn">ಪ</span> and Devanagari{' '}
+              <span lang="hi">प</span>.
+            </p>
+          </div>
+        )
+      }
+    </section>
+
+    {
+      awards.length > 0 && (
+        <section class="section" aria-labelledby="awards">
+          <SectionHeading id="awards">Awards &amp; competitions</SectionHeading>
+          <AwardList awards={awards} />
+        </section>
+      )
+    }
+
+    <section class="section shelf-link" data-reveal>
+      <a href="/bookshelf" class="shelf-link__a card card--lift">
+        <Icon name="book-open" size={24} />
+        <span>
+          <span class="shelf-link__title">Bookshelf</span>
+          <span class="shelf-link__text">Books I've read and what stuck with me.</span>
+        </span>
+        <Icon name="arrow-right" size={18} class="shelf-link__arrow" />
+      </a>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .about-head {
+    margin-bottom: 36px;
+  }
+
+  .about-intro {
+    display: grid;
+    gap: 48px;
+  }
+
+  .about-intro__text p + p {
+    margin-top: 16px;
+  }
+
+  .about-intro__photo {
+    position: relative;
+    width: min(320px, 80vw);
+  }
+
+  .about-intro__tag {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    background: var(--bg);
+    border-radius: 999px;
+  }
+
+  @media (min-width: 768px) {
+    .about-intro {
+      grid-template-columns: 3fr 2fr;
+      gap: 56px;
+    }
+  }
+
+  .currently {
+    display: grid;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .currently__item {
+    display: grid;
+    grid-template-columns: 96px 1fr;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .currently__label {
+    padding-top: 3px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .currently__text {
+    color: var(--text);
+  }
+
+  .currently__updated {
+    margin-top: 12px;
+  }
+
+  .two-col {
+    display: grid;
+    gap: 48px;
+  }
+
+  @media (min-width: 768px) {
+    .two-col {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .sub-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 22px;
+  }
+
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .chip-list li {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .hint {
+    margin-top: 16px;
+    color: var(--faint);
+    font-size: 15px;
+  }
+
+  .hint span[lang] {
+    color: var(--text);
+    font-family: var(--font-glyph);
+  }
+
+  .shelf-link__a {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 18px;
+    padding: 22px 24px;
+    color: var(--muted);
+  }
+
+  .shelf-link__title {
+    display: block;
+    color: var(--text);
+    font-weight: 560;
+  }
+
+  .shelf-link__text {
+    display: block;
+    font-size: 15px;
+  }
+
+  .shelf-link__a :global(.shelf-link__arrow) {
+    transition: transform var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .shelf-link__a:hover :global(.shelf-link__arrow) {
+      transform: translateX(4px);
+    }
+  }
+</style>

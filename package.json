@@ -1,0 +1,49 @@
+{
+  "name": "parjanya-me",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "glyphs": "node scripts/generate-intro-glyphs.mjs",
+    "prebuild": "node scripts/generate-intro-glyphs.mjs",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "check:links": "node scripts/check-links.mjs",
+    "resume:pdf": "node scripts/resume-pdf.mjs",
+    "ci": "astro check && astro build && node scripts/check-links.mjs",
+    "astro": "astro"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "sharp": true
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "^7.3.1",
+    "@astrojs/mdx": "^8.0.2",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.4",
+    "@shikijs/themes": "^4.4.3",
+    "@shikijs/transformers": "^4.4.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.3.5",
+    "geist": "^1.7.2",
+    "katex": "^0.18.9",
+    "rehype-autolink-headings": "^7.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.3.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "lucide-static": "^1.48.0",
+    "opentype.js": "^2.0.0",
+    "simple-icons": "^16.33.0",
+    "typescript": "^6.0.3"
+  }
+}

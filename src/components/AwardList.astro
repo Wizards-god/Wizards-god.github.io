@@ -1,0 +1,71 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { monthYear, isoDate } from '../lib/format';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  awards: CollectionEntry<'awards'>[];
+}
+const { awards } = Astro.props;
+---
+
+<ul class="awards" data-reveal-stagger>
+  {
+    awards.map((a) => (
+      <li class="award" data-reveal>
+        <time class="award__date" datetime={isoDate(a.data.date)}>
+          {monthYear(a.data.date)}
+        </time>
+        <div class="award__body">
+          <p class="award__title">
+            {a.data.title} <PlaceholderTag show={a.data.placeholder} />
+          </p>
+          <p class="award__issuer">{a.data.issuer}</p>
+          {a.data.note && <p class="award__note">{a.data.note}</p>}
+        </div>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .awards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .award {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .award__date {
+    padding-top: 3px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .award__title {
+    color: var(--text);
+    font-size: 16.5px;
+    line-height: 1.4;
+  }
+
+  .award__issuer {
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .award__note {
+    margin-top: 4px;
+    color: var(--faint);
+    font-size: 14px;
+  }
+</style>

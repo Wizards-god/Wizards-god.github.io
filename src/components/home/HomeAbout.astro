@@ -1,0 +1,96 @@
+---
+import { Image } from 'astro:assets';
+import portrait from '../../assets/portrait-placeholder.png';
+import { bio } from '../../data/about';
+import SectionHeading from '../SectionHeading.astro';
+import PlaceholderTag from '../PlaceholderTag.astro';
+import Icon from '../Icon.astro';
+
+// Swap portrait-placeholder.png for a real photo and set this to false.
+const photoIsPlaceholder = true;
+---
+
+<section id="about" class="section wrap" data-nav-section="about" aria-labelledby="about-title">
+  <SectionHeading id="about-title">About me</SectionHeading>
+  <div class="about">
+    <div class="about__text" data-reveal>
+      {bio.short.map((p) => <p>{p}</p>)}
+      <a href="/about" class="more-link">
+        more about me <Icon name="arrow-right" size={16} />
+      </a>
+    </div>
+    <div class="about__photo framed-wrap" data-reveal>
+      <a href="/about" class="framed" tabindex="-1" aria-hidden="true">
+        <span class="duotone">
+          <Image
+            src={portrait}
+            alt=""
+            widths={[300, 440, 660]}
+            sizes="(min-width: 768px) 300px, 70vw"
+            loading="lazy"
+            decoding="async"
+          />
+        </span>
+      </a>
+      {photoIsPlaceholder && <span class="about__tag"><PlaceholderTag /></span>}
+    </div>
+  </div>
+</section>
+
+<style>
+  .about {
+    display: grid;
+    gap: 56px;
+  }
+
+  .about__text p + p {
+    margin-top: 16px;
+  }
+
+  .about__photo {
+    position: relative;
+    width: min(300px, 70vw);
+    margin-inline: auto;
+  }
+
+  .about__tag {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 1;
+    background: var(--bg);
+    border-radius: 999px;
+  }
+
+  @media (min-width: 768px) {
+    .about {
+      grid-template-columns: 3fr 2fr;
+      gap: 50px;
+      align-items: start;
+    }
+    .about__photo {
+      margin-inline: 0 auto;
+    }
+  }
+
+  .more-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 18px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+
+  .more-link :global(svg) {
+    transition: transform var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .more-link:hover :global(svg) {
+      transform: translateX(4px);
+    }
+  }
+</style>

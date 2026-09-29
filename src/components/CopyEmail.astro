@@ -1,0 +1,37 @@
+---
+import { site } from '../data/site';
+import Icon from './Icon.astro';
+
+interface Props {
+  showAddress?: boolean;
+}
+const { showAddress = true } = Astro.props;
+---
+
+<span class="copy-email">
+  {showAddress && <a href={`mailto:${site.email}`} class="copy-email__address link">{site.email}</a>}
+  <button type="button" class="btn btn--small copy-email__btn" data-copy-email={site.email}>
+    <Icon name="copy" size={16} />
+    <span>Copy email</span>
+  </button>
+</span>
+
+<style>
+  .copy-email {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px 16px;
+  }
+
+  .copy-email__address {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  :global(html:not(.js)) .copy-email__btn {
+    display: none;
+  }
+</style>

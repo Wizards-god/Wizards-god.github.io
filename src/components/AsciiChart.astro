@@ -1,0 +1,49 @@
+---
+// Decorative ASCII price chart: a seeded random walk, regenerated at each build.
+import { randomWalk, plot } from '../lib/ascii-chart';
+import { buildDate } from '../lib/build-info';
+import { isoDate } from '../lib/format';
+
+const seed = isoDate(buildDate);
+const series = randomWalk(seed, 34);
+const rows = plot(series, 7);
+const last = series[series.length - 1];
+const change = ((last - series[0]) / series[0]) * 100;
+---
+
+<figure class="ascii" data-enter style="--i: 6">
+  <pre class="ascii__pre" aria-hidden="true"><span class="ascii__head">PRJ · random walk · seed {seed}</span>
+{rows.map((r) => (
+  <>{r.label} {r.label.trim() ? '┤' : '│'}{r.cells}{r.last && <span class="ascii__last"> {last.toFixed(2)}</span>}{'\n'}</>
+))}<span class="ascii__head">{' '.repeat(rows[0].label.length + 2)}{change >= 0 ? '+' : ''}{change.toFixed(2)}% since open</span></pre>
+  <figcaption class="visually-hidden">
+    Decorative chart: a made-up price following a random walk, redrawn every time the site is built. Last value {last.toFixed(2)}.
+  </figcaption>
+</figure>
+
+<style>
+  .ascii {
+    margin: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .ascii__pre {
+    margin: 0;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: clamp(9px, 2.7vw, 12px);
+    line-height: 1.35;
+    letter-spacing: 0;
+    white-space: pre;
+    font-variant-ligatures: none;
+  }
+
+  .ascii__head {
+    color: var(--faint);
+  }
+
+  .ascii__last {
+    color: var(--accent);
+  }
+</style>

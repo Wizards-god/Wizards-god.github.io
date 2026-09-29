@@ -1,0 +1,144 @@
+---
+import { site } from '../data/site';
+import { lastUpdated } from '../lib/build-info';
+import { fullDate, isoDate } from '../lib/format';
+import Icon from './Icon.astro';
+
+const socials = [
+  { ...site.socials.github, icon: 'github' as const },
+  { ...site.socials.linkedin, icon: 'linkedin' as const },
+  { ...site.socials.orcid, icon: 'orcid' as const },
+];
+---
+
+<footer class="site-footer">
+  <div class="wrap site-footer__inner">
+    <div class="site-footer__contact">
+      <ul class="site-footer__socials">
+        {
+          socials.map((s) => (
+            <li>
+              <a href={s.url} class="site-footer__icon" target="_blank" rel="noopener noreferrer" aria-label={s.label}>
+                <Icon name={s.icon} />
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+      <a href={`mailto:${site.email}`} class="site-footer__email link link--quiet">{site.email}</a>
+    </div>
+    <nav class="site-footer__nav" aria-label="Footer">
+      {site.nav.map((item) => <a href={item.href} class="link link--quiet">{item.label}</a>)}
+      <a href="/resume" class="link link--quiet">Resume</a>
+    </nav>
+    <p class="site-footer__line">Designed &amp; built by {site.name}</p>
+    <p class="site-footer__line">
+      Last updated <time datetime={isoDate(lastUpdated)}>{fullDate(lastUpdated)}</time>
+      <span aria-hidden="true">·</span>
+      <a href={site.source} class="link link--quiet" target="_blank" rel="noopener noreferrer">Source<span class="ext" aria-hidden="true">↗</span></a>
+      <span aria-hidden="true">·</span>
+      <a href="/bookshelf" class="link link--quiet">Bookshelf</a>
+      <span aria-hidden="true">·</span>
+      <a href="/rss.xml" class="link link--quiet">RSS</a>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    position: relative;
+    z-index: var(--z-content);
+    padding-block: 48px 36px;
+  }
+
+  .site-footer__inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .site-footer__contact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  .site-footer__socials {
+    display: flex;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .site-footer__icon {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    color: var(--faint);
+    transition:
+      color var(--dur-ui) var(--ease-ui),
+      transform var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .site-footer__icon:hover {
+      color: var(--text);
+      transform: translateY(-3px);
+    }
+  }
+
+  .site-footer__icon:active {
+    color: var(--text);
+  }
+
+  .site-footer__email {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+
+  .site-footer__nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 18px;
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .site-footer__nav .link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+  }
+
+  .site-footer__line {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    line-height: 2;
+  }
+
+  .site-footer__line .link {
+    color: var(--faint);
+  }
+
+  .site-footer__line span[aria-hidden] {
+    margin-inline: 6px;
+  }
+
+  /* On wide screens the side rails carry the socials and email. */
+  @media (min-width: 1024px) {
+    .site-footer__contact {
+      display: none;
+    }
+  }
+</style>

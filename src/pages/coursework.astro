@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CourseList from '../components/CourseList.astro';
+import { getCoursesByTerm } from '../lib/content';
+
+const groups = await getCoursesByTerm();
+---
+
+<BaseLayout
+  title="Coursework"
+  description="Parjanya Shankar's coursework at the University of Illinois Urbana-Champaign, by semester."
+  ogImage="/og/coursework.png"
+>
+  <div class="page wrap">
+    <header class="head">
+      <p class="eyebrow" data-enter style="--i: 0">coursework</p>
+      <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Coursework</h1>
+      <p class="lede" data-enter style="--i: 2">
+        Courses at the University of Illinois Urbana-Champaign, newest semester first. Where I've written notes,
+        they're linked as PDFs.
+      </p>
+    </header>
+    <div class="list" data-enter style="--i: 3">
+      <CourseList groups={groups} />
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .head {
+    margin-bottom: 48px;
+  }
+
+  .head .lede {
+    margin-top: 14px;
+  }
+
+  .list {
+    max-width: 820px;
+  }
+</style>

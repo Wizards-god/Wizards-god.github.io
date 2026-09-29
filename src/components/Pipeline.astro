@@ -1,0 +1,97 @@
+---
+// A simple step diagram: horizontal on wide screens, vertical on phones.
+interface Props {
+  steps: { title: string; detail?: string }[];
+  label?: string;
+}
+const { steps, label = 'Pipeline' } = Astro.props;
+---
+
+<figure class="pipeline not-prose">
+  <ol class="pipeline__steps" aria-label={label}>
+    {
+      steps.map((s, i) => (
+        <li class="pipeline__step">
+          <span class="pipeline__index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+          <span class="pipeline__title">{s.title}</span>
+          {s.detail && <span class="pipeline__detail">{s.detail}</span>}
+        </li>
+      ))
+    }
+  </ol>
+</figure>
+
+<style>
+  .pipeline {
+    margin-block: 1.6em;
+  }
+
+  .pipeline__steps {
+    display: grid;
+    gap: 12px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .pipeline__step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    margin: 0 !important;
+  }
+
+  .pipeline__step::before {
+    display: none;
+  }
+
+  /* Connector between steps. */
+  .pipeline__step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 24px;
+    bottom: -13px;
+    width: 1px;
+    height: 12px;
+    background: var(--faint);
+  }
+
+  .pipeline__index {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+    letter-spacing: 0.06em;
+  }
+
+  .pipeline__title {
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 560;
+  }
+
+  .pipeline__detail {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  @media (min-width: 760px) {
+    .pipeline__steps {
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+    }
+    .pipeline__step:not(:last-child)::after {
+      left: auto;
+      right: -13px;
+      top: 50%;
+      bottom: auto;
+      width: 12px;
+      height: 1px;
+    }
+  }
+</style>

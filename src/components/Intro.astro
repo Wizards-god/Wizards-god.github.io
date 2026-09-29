@@ -1,0 +1,114 @@
+---
+// Intro overlay. Hidden unless the head script set html.intro-active.
+// Letters are pre-generated outlines (scripts/generate-intro-glyphs.mjs).
+import { introGlyphs as G } from '../data/intro-glyphs';
+import { site } from '../data/site';
+
+const { viewBox: vb, letters, period, counter } = G;
+const R = 100000;
+const rect = `M${-R} ${-R}H${R}V${R}H${-R}Z`;
+---
+
+<div
+  id="intro"
+  class="intro"
+  aria-hidden="true"
+  data-min-ms={site.intro.minMs}
+  data-max-wait-ms={site.intro.maxWaitMs}
+>
+  <svg
+    class="intro__svg"
+    viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+    style={`--word-w: ${vb.w / G.upm}`}
+    focusable="false"
+  >
+    <g data-intro-zoom>
+      <path class="intro__bg" data-intro-bg fill-rule="evenodd" d={rect}></path>
+      <g class="intro__ink" data-intro-ink>
+        {letters.map((l, i) => <path class:list={['intro__letter', { 'is-on': i === 0 }]} data-intro-letter d={l.d} />)}
+        <path class="intro__period" data-intro-period d={period.d} transform={`translate(${period.x[0]} 0)`}></path>
+      </g>
+      <path class="intro__counter" data-intro-counter d={counter.d}></path>
+    </g>
+  </svg>
+</div>
+
+<noscript><style>.intro{display:none!important}</style></noscript>
+
+<style>
+  .intro {
+    display: none;
+  }
+
+  :global(html.intro-active) {
+    overflow: hidden;
+  }
+
+  :global(html.intro-active) .intro {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-intro);
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: var(--bg);
+    cursor: default;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    /* CSS fail-safe: never cover the site for more than ~6s. */
+    animation: intro-failsafe 0.3s calc(6s * var(--slow)) forwards;
+  }
+
+  /* Once the counter is cut out, the SVG path alone paints the background. */
+  :global(html.intro-active) .intro.has-hole {
+    background: transparent;
+  }
+
+  .intro__svg {
+    width: calc(var(--word-w) * clamp(44px, 12vw, 128px));
+    height: auto;
+    max-width: none;
+    overflow: visible;
+  }
+
+  .intro__bg {
+    fill: var(--bg);
+  }
+
+  .intro__letter {
+    fill: var(--text);
+    opacity: 0;
+  }
+
+  .intro__letter.is-on {
+    opacity: 1;
+  }
+
+  .intro__period {
+    fill: var(--accent);
+    animation: caret-blink calc(1s * var(--slow)) steps(1) infinite;
+  }
+
+  .intro__period:global(.is-typing),
+  .intro__period:global(.is-solid) {
+    animation: none;
+  }
+
+  .intro__counter {
+    fill: none;
+    stroke: none;
+  }
+
+  @keyframes caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes intro-failsafe {
+    to {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+</style>

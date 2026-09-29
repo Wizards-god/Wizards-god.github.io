@@ -1,0 +1,271 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { dateRange } from '../lib/format';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  jobs: CollectionEntry<'experience'>[];
+}
+const { jobs } = Astro.props;
+---
+
+<div class="tabs" data-tabs data-reveal>
+  <div class="tabs__list" role="tablist" aria-label="Experience" aria-orientation="vertical">
+    {
+      jobs.map((job, i) => (
+        <button
+          type="button"
+          role="tab"
+          id={`tab-${job.id}`}
+          class="tabs__tab"
+          aria-selected={i === 0 ? 'true' : 'false'}
+          aria-controls={`panel-${job.id}`}
+          tabindex={i === 0 ? 0 : -1}
+        >
+          {job.data.company}
+        </button>
+      ))
+    }
+    <span class="tabs__indicator" aria-hidden="true"></span>
+  </div>
+
+  <div class="tabs__panels">
+    {
+      jobs.map((job, i) => (
+        <div
+          role="tabpanel"
+          id={`panel-${job.id}`}
+          class="tabs__panel"
+          aria-labelledby={`tab-${job.id}`}
+          tabindex="0"
+          hidden={i !== 0}
+        >
+          <h3 class="tabs__role">
+            {job.data.role}{' '}
+            <span class="tabs__company">
+              @{' '}
+              {job.data.url ? (
+                <a href={job.data.url} class="link" target="_blank" rel="noopener noreferrer">
+                  {job.data.company}
+                  <span class="ext" aria-hidden="true">↗</span>
+                </a>
+              ) : (
+                job.data.company
+              )}
+            </span>{' '}
+            <PlaceholderTag show={job.data.placeholder} />
+          </h3>
+          <p class="tabs__meta">
+            <span>{dateRange(job.data.start, job.data.end)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{job.data.location}</span>
+          </p>
+          <ul class="tabs__bullets">
+            {job.data.bullets.map((b) => (
+              <li>{b}</li>
+            ))}
+          </ul>
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<noscript>
+  <style>
+    .tabs__list { display: none !important; }
+    .tabs__panel[hidden] { display: block !important; margin-top: 32px; }
+  </style>
+</noscript>
+
+<style>
+  .tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .tabs__list {
+    position: relative;
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border);
+    margin-inline: calc(var(--pad-x) * -1);
+    padding-inline: var(--pad-x);
+  }
+
+  .tabs__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tabs__tab {
+    flex: none;
+    min-width: 120px;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    background: transparent;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    text-align: center;
+    white-space: nowrap;
+    transition:
+      color var(--dur-ui) var(--ease-ui),
+      background-color var(--dur-ui) var(--ease-ui);
+  }
+
+  .tabs__tab[aria-selected='true'] {
+    color: var(--text);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .tabs__tab:hover {
+      color: var(--text);
+      background: var(--accent-tint);
+    }
+    .tabs__tab[aria-selected='true']:hover {
+      color: var(--text);
+    }
+  }
+
+  .tabs__tab:active {
+    background: var(--accent-tint);
+  }
+
+  .tabs__tab:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* A 1px element stretched by transform; slides to the active tab. */
+  .tabs__indicator {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 1px;
+    height: 2px;
+    background: var(--accent);
+    transform-origin: 0 0;
+    transform: scaleX(120);
+    transition: transform calc(250ms * var(--slow)) var(--ease-ui) calc(100ms * var(--slow));
+  }
+
+  .tabs__indicator:global(.no-anim) {
+    transition: none;
+  }
+
+  @media (min-width: 600px) {
+    .tabs {
+      flex-direction: row;
+      gap: 32px;
+    }
+
+    .tabs__list {
+      flex-direction: column;
+      align-self: flex-start;
+      flex: none;
+      width: max-content;
+      min-width: 150px;
+      overflow: visible;
+      margin: 0;
+      padding: 0;
+      border-bottom: 0;
+      border-left: 2px solid var(--border);
+    }
+
+    .tabs__tab {
+      height: 44px;
+      padding: 0 20px;
+      text-align: left;
+    }
+
+    .tabs__indicator {
+      left: -2px;
+      top: 0;
+      bottom: auto;
+      width: 2px;
+      height: 1px;
+      transform: scaleY(44);
+    }
+  }
+
+  .tabs__panels {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 280px;
+  }
+
+  .tabs__panel {
+    outline: none;
+  }
+
+  .tabs__panel:not([hidden]) {
+    animation: enter-fade calc(300ms * var(--slow)) var(--ease-out);
+  }
+
+  .tabs__panel:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 8px;
+    border-radius: 2px;
+  }
+
+  .tabs__role {
+    font-size: 21px;
+    font-weight: 540;
+    line-height: 1.35;
+  }
+
+  .tabs__company {
+    color: var(--muted);
+  }
+
+  .tabs__company .link {
+    color: var(--text);
+  }
+
+  .tabs__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: 6px;
+    margin-bottom: 24px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .tabs__bullets {
+    display: grid;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tabs__bullets li {
+    position: relative;
+    padding-left: 22px;
+    font-size: 17px;
+  }
+
+  .tabs__bullets li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0.8em;
+    width: 8px;
+    height: 1px;
+    background: var(--faint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tabs__indicator {
+      transition: none;
+    }
+    .tabs__panel:not([hidden]) {
+      animation: none;
+    }
+  }
+</style>

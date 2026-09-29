@@ -1,0 +1,174 @@
+---
+// Fixed layers that persist across client-side navigations: cursor glow,
+// theme curtain, page-transition shutter, and the toast region.
+import { site } from '../data/site';
+---
+
+<div class="glow" data-glow data-reduced={site.glow.reducedMotion} aria-hidden="true" transition:persist="glow"></div>
+
+<div class="theme-curtain" data-theme-curtain aria-hidden="true" transition:persist="theme-curtain"></div>
+
+<div class="shutter" data-shutter aria-hidden="true" transition:persist="shutter">
+  <div class="shutter__panel shutter__panel--top"></div>
+  <div class="shutter__panel shutter__panel--bottom"></div>
+  <div class="shutter__fade"></div>
+  <span class="shutter__label" data-shutter-label></span>
+</div>
+
+<div class="toast" data-toast role="status" aria-live="polite" transition:persist="toast"></div>
+
+<style>
+  /* ---- cursor glow (above the page background, below content) ---- */
+  .glow {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: var(--z-glow);
+    width: 900px;
+    height: 900px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 60%);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate3d(-9999px, -9999px, 0);
+    transition: opacity 300ms var(--ease-out);
+  }
+
+  .glow:global(.is-visible) {
+    opacity: 1;
+  }
+
+  /* ---- theme curtain ---- */
+  .theme-curtain {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-curtain);
+    background: var(--bg);
+    transform: translateX(-100%);
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .theme-curtain:global(.is-active) {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  /* ---- shutter ---- */
+  .shutter {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-shutter);
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .shutter:global(.is-active),
+  :global(html.page-entering) .shutter {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .shutter__panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    /* Percent of the fixed container, not vh, so mobile toolbars never leave a gap.
+       The extra pixel overlaps the seam. */
+    height: calc(50% + 1px);
+    background: var(--shutter);
+  }
+
+  .shutter__panel--top {
+    top: 0;
+    transform: translateY(-100%);
+  }
+
+  .shutter__panel--bottom {
+    bottom: 0;
+    transform: translateY(100%);
+  }
+
+  /* Hard refresh within a session: closed before first paint, opened by JS.
+     If JS never runs, the fail-safe animation opens it anyway. */
+  :global(html.page-entering) .shutter__panel {
+    transform: none;
+    animation: shutter-failsafe 0.5s calc(3s * var(--slow)) var(--ease-shutter) forwards;
+  }
+
+  :global(html.page-entering) .shutter__panel--bottom {
+    animation-name: shutter-failsafe-bottom;
+  }
+
+  @keyframes shutter-failsafe {
+    to {
+      transform: translateY(-100%);
+    }
+  }
+
+  @keyframes shutter-failsafe-bottom {
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  .shutter__fade {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    opacity: 0;
+  }
+
+  .shutter__label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--shutter-text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    opacity: 0;
+  }
+
+  /* ---- toast ---- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 76px;
+    z-index: var(--z-toast);
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    transition:
+      opacity var(--dur-ui) var(--ease-ui),
+      transform var(--dur-ui) var(--ease-ui);
+  }
+
+  .toast:empty {
+    padding: 0;
+    border: 0;
+  }
+
+  .toast:global(.is-visible) {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toast {
+      transition: opacity 150ms linear;
+      transform: translate(-50%, 0);
+    }
+  }
+</style>

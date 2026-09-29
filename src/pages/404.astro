@@ -1,0 +1,61 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<BaseLayout title="Not found" description="This page doesn't exist." ogImage="/og/home.png" noindex>
+  <div class="page wrap nf">
+    <h1 class="nf__code" data-enter style="--i: 0" tabindex="-1">
+      <span class="visually-hidden">404: page not found</span>
+      <span aria-hidden="true">p404<span class="nf__dot">.</span></span>
+    </h1>
+    <p class="nf__text" data-enter style="--i: 1">That page doesn't exist, or it moved.</p>
+    <p data-enter style="--i: 2">
+      <a href="/" class="btn btn--primary">
+        <Icon name="arrow-left" size={16} /> Back home
+      </a>
+    </p>
+  </div>
+</BaseLayout>
+
+<style>
+  .nf {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    min-height: 80vh;
+    min-height: 80svh;
+    text-align: center;
+  }
+
+  .nf__code {
+    color: var(--text);
+    font-size: clamp(72px, 16vw, 160px);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.05em;
+  }
+
+  .nf__dot {
+    color: var(--accent);
+    animation: blink calc(1s * var(--slow)) steps(1) infinite;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nf__dot {
+      animation: none;
+    }
+  }
+
+  .nf__text {
+    font-size: 18px;
+  }
+</style>

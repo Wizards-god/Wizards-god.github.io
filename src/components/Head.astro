@@ -1,0 +1,145 @@
+---
+import { site } from '../data/site';
+
+export interface SeoProps {
+  title?: string;
+  description?: string;
+  /** Path of the Open Graph image, e.g. /og/about.png */
+  ogImage?: string;
+  ogAlt?: string;
+  type?: 'website' | 'article';
+  published?: Date;
+  modified?: Date;
+  jsonLd?: Record<string, unknown>[];
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  ogImage = '/og/home.png',
+  ogAlt,
+  type = 'website',
+  published,
+  modified,
+  jsonLd = [],
+  noindex = false,
+} = Astro.props as SeoProps;
+
+const fullTitle = title ? `${title} — ${site.name}` : site.name;
+const path = Astro.url.pathname.endsWith('/') || /\.[a-z0-9]+$/i.test(Astro.url.pathname) ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const canonical = new URL(path, site.domain).href;
+const ogUrl = new URL(ogImage, site.domain).href;
+const imageAlt = ogAlt ?? `${title ?? site.name}: parjanya.me`;
+const introCfg = site.intro;
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+{noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+<meta name="color-scheme" content="dark light" />
+<meta name="theme-color" content="#1c1c1b" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#f5f4f0" media="(prefers-color-scheme: light)" />
+
+<!--
+  Runs before first paint: theme (no flash), ?slow= tuning, and whether this
+  load plays the intro, reveals through the shutter, or shows the page as is.
+-->
+<script is:inline define:vars={{ introCfg }}>
+  (function () {
+    var d = document.documentElement;
+    var c = d.classList;
+    function get(store, k) {
+      try { return window[store].getItem(k); } catch (e) { return null; }
+    }
+    function set(store, k, v) {
+      try { window[store].setItem(k, v); } catch (e) {}
+    }
+
+    var t = get('localStorage', 'theme');
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    d.setAttribute('data-theme', t);
+    d.style.colorScheme = t;
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', t === 'light' ? '#f5f4f0' : '#1c1c1b');
+
+    var q = new URLSearchParams(location.search);
+    var slow = parseFloat(q.get('slow') || '');
+    if (slow > 0) set('sessionStorage', 'slow', String(slow));
+    else slow = parseFloat(get('sessionStorage', 'slow') || '1') || 1;
+    if (slow !== 1) d.style.setProperty('--slow', String(slow));
+
+    var rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    c.add('js');
+    if (!rm) c.add('reveal-ready');
+
+    var p = q.get('intro');
+    var seen = get('sessionStorage', 'intro-seen') === '1';
+    var play = introCfg.enabled && p !== '0' && (p === '1' || !introCfg.oncePerSession || !seen);
+    if (play) {
+      c.add('intro-active', 'chrome-wait');
+      if (rm) c.add('intro-reduced');
+      set('sessionStorage', 'intro-seen', '1');
+    } else if (seen && p !== '0' && !rm) {
+      c.add('page-entering', 'chrome-wait', 'content-wait');
+    } else {
+      c.add('chrome-in', 'content-in');
+      set('sessionStorage', 'intro-seen', '1');
+    }
+
+    // Fail-safe: if the main script never starts, show everything.
+    setTimeout(function () {
+      if (window.__siteReady) return;
+      c.remove('reveal-ready', 'content-wait', 'chrome-wait', 'page-entering', 'intro-active');
+      c.add('content-in', 'chrome-in');
+    }, 4000 * slow);
+  })();
+</script>
+
+<link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="alternate" type="application/rss+xml" title={`${site.name}: Writing`} href="/rss.xml" />
+<link rel="sitemap" href="/sitemap-index.xml" />
+
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={site.name} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogUrl} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={imageAlt} />
+<meta property="og:locale" content="en_US" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogUrl} />
+<meta name="twitter:image:alt" content={imageAlt} />
+{published && <meta property="article:published_time" content={published.toISOString()} />}
+{modified && <meta property="article:modified_time" content={modified.toISOString()} />}
+<meta name="author" content={site.name} />
+{jsonLd.map((obj) => <script type="application/ld+json" is:inline set:html={JSON.stringify(obj)} />)}
+
+{
+  site.analytics.goatcounter && (
+    <>
+      <script
+        is:inline
+        async
+        data-goatcounter={`https://${site.analytics.goatcounter}.goatcounter.com/count`}
+        src="https://gc.zgo.at/count.js"
+      />
+      <script is:inline>
+        document.addEventListener('astro:after-swap', function () {
+          if (window.goatcounter && window.goatcounter.count) window.goatcounter.count({ path: location.pathname });
+        });
+      </script>
+    </>
+  )
+}

@@ -1,0 +1,53 @@
+---
+import { getFeaturedProjects } from '../../lib/content';
+import SectionHeading from '../SectionHeading.astro';
+import FeaturedProject from '../FeaturedProject.astro';
+import Icon from '../Icon.astro';
+
+const featured = await getFeaturedProjects(3);
+---
+
+{
+  featured.length > 0 && (
+    <section id="projects" class="section wrap" data-nav-section="projects" aria-labelledby="featured-title">
+      <SectionHeading id="featured-title">Selected projects</SectionHeading>
+      <div class="featured-list">
+        {featured.map((p, i) => (
+          <FeaturedProject project={p} flip={i % 2 === 1} />
+        ))}
+      </div>
+      <p class="all-link" data-reveal>
+        <a href="/projects" class="more-link">
+          all projects <Icon name="arrow-right" size={16} />
+        </a>
+      </p>
+    </section>
+  )
+}
+
+<style>
+  .all-link {
+    margin-top: 64px;
+    text-align: center;
+  }
+
+  .more-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+
+  .more-link :global(svg) {
+    transition: transform var(--dur-ui) var(--ease-ui);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .more-link:hover :global(svg) {
+      transform: translateX(4px);
+    }
+  }
+</style>

@@ -1,0 +1,117 @@
+---
+import { site } from '../data/site';
+import Icon from './Icon.astro';
+
+const socials = [
+  { ...site.socials.github, icon: 'github' as const },
+  { ...site.socials.linkedin, icon: 'linkedin' as const },
+  { ...site.socials.orcid, icon: 'orcid' as const },
+];
+---
+
+<aside class="rails" aria-label="Social links and email" transition:persist="rails">
+  <div class="rail rail--left enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms">
+    <ul class="rail__list">
+      {
+        socials.map((s) => (
+          <li>
+            <a href={s.url} class="rail__icon" target="_blank" rel="noopener noreferrer" aria-label={s.label}>
+              <Icon name={s.icon} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+  <div class="rail rail--right enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms">
+    <a href={`mailto:${site.email}`} class="rail__email">{site.email}</a>
+  </div>
+</aside>
+
+<style>
+  .rails {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .rails {
+      display: block;
+    }
+  }
+
+  .rail {
+    position: fixed;
+    bottom: 0;
+    z-index: var(--z-rails);
+    width: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .rail--left {
+    left: 40px;
+  }
+
+  .rail--right {
+    right: 40px;
+  }
+
+  .rail::after {
+    content: '';
+    display: block;
+    width: 1px;
+    height: 90px;
+    margin-top: 20px;
+    background: var(--faint);
+    opacity: 0.6;
+  }
+
+  .rail__list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .rail__icon,
+  .rail__email {
+    display: inline-grid;
+    place-items: center;
+    color: var(--faint);
+    transition:
+      transform var(--dur-ui) var(--ease-ui),
+      color var(--dur-ui) var(--ease-ui);
+  }
+
+  .rail__icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .rail__email {
+    padding: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    line-height: 1.2;
+    writing-mode: vertical-rl;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .rail__icon:hover,
+    .rail__email:hover {
+      color: var(--text);
+      transform: translateY(-3px);
+    }
+  }
+
+  .rail__icon:focus-visible,
+  .rail__email:focus-visible {
+    color: var(--text);
+    transform: translateY(-3px);
+  }
+</style>

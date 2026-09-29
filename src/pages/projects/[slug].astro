@@ -1,0 +1,244 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+import { Picture } from 'astro:assets';
+import ReadingLayout from '../../layouts/ReadingLayout.astro';
+import PlaceholderTag from '../../components/PlaceholderTag.astro';
+import Icon from '../../components/Icon.astro';
+import { getProjects, projectUrl } from '../../lib/content';
+import { monthYear } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const projects = await getProjects();
+  return projects.map((project, i) => ({
+    params: { slug: project.id },
+    props: {
+      project,
+      prev: projects[i - 1] ?? null,
+      next: projects[i + 1] ?? null,
+    },
+  }));
+}
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+  prev: CollectionEntry<'projects'> | null;
+  next: CollectionEntry<'projects'> | null;
+}
+
+const { project, prev, next } = Astro.props;
+const { Content } = await render(project);
+const d = project.data;
+const links = [
+  d.links.github && { href: d.links.github, label: 'GitHub' },
+  d.links.live && { href: d.links.live, label: 'Live' },
+  d.links.paper && { href: d.links.paper, label: 'Paper' },
+].filter(Boolean) as { href: string; label: string }[];
+---
+
+<ReadingLayout
+  title={d.title}
+  description={d.summary}
+  ogImage={`/og/projects/${project.id}.png`}
+  type="article"
+  published={d.date}
+  back={{ href: '/projects', label: 'all projects' }}
+>
+  <Fragment slot="header">
+    <p class="eyebrow" data-enter style="--i: 1">case study</p>
+    <h1 class="page-title case__title" data-enter style="--i: 2" tabindex="-1">
+      {d.title}
+      <PlaceholderTag show={d.placeholder} />
+    </h1>
+    <p class="lede case__summary" data-enter style="--i: 3">{d.summary}</p>
+    <p class="case__meta" data-enter style="--i: 4">
+      <span>{monthYear(d.date)}</span>
+      <span aria-hidden="true">·</span>
+      <span class="status-chip" data-status={d.status}>{d.status === 'in-progress' ? 'in progress' : 'shipped'}</span>
+      {
+        d.stack.length > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>{d.stack.join(' · ')}</span>
+          </>
+        )
+      }
+      {
+        links.map((l) => (
+          <>
+            <span aria-hidden="true">·</span>
+            <a href={l.href} class="link" target="_blank" rel="noopener noreferrer">
+              {l.label}
+              <span class="ext" aria-hidden="true">↗</span>
+            </a>
+          </>
+        ))
+      }
+    </p>
+  </Fragment>
+
+  <Fragment slot="before">
+    {
+      d.metrics.length > 0 && (
+        <dl class="stats" data-enter style="--i: 5">
+          {d.metrics.map((m) => (
+            <div class="stat">
+              <dt>{m.label}</dt>
+              <dd>{m.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+    {
+      d.cover && (
+        <figure class="case__cover" data-enter style="--i: 5">
+          <span class="duotone">
+            <Picture
+              src={d.cover}
+              alt={d.coverAlt}
+              formats={['avif']}
+              fallbackFormat="webp"
+              widths={[480, 720, 1080, 1360]}
+              sizes="(min-width: 760px) 680px, 100vw"
+              loading="eager"
+            />
+          </span>
+        </figure>
+      )
+    }
+  </Fragment>
+
+  <Content />
+
+  <nav slot="after" class="case-nav" aria-label="More projects">
+    {
+      prev ? (
+        <a href={projectUrl(prev)} class="case-nav__link card card--lift">
+          <span class="label">
+            <Icon name="arrow-left" size={14} /> previous
+          </span>
+          <span class="case-nav__title">{prev.data.title}</span>
+        </a>
+      ) : (
+        <span />
+      )
+    }
+    {
+      next && (
+        <a href={projectUrl(next)} class="case-nav__link case-nav__link--next card card--lift">
+          <span class="label">
+            next <Icon name="arrow-right" size={14} />
+          </span>
+          <span class="case-nav__title">{next.data.title}</span>
+        </a>
+      )
+    }
+  </nav>
+</ReadingLayout>
+
+<style>
+  .case__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+  }
+
+  .case__summary {
+    margin-top: 16px;
+  }
+
+  .case__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 20px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    margin: 0 0 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .stat {
+    padding: 16px 18px;
+    background: var(--bg);
+  }
+
+  .stat dt {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  .stat dd {
+    margin: 4px 0 0;
+    color: var(--text);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .case__cover {
+    margin: 0 0 40px;
+  }
+
+  .case__cover :global(img) {
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+  }
+
+  .case-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 72px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+  }
+
+  .case-nav__link {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 18px 20px;
+  }
+
+  .case-nav__link .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .case-nav__link--next {
+    grid-column: 2;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .case-nav__title {
+    color: var(--text);
+    font-weight: 560;
+    line-height: 1.3;
+  }
+
+  @media (max-width: 520px) {
+    .case-nav {
+      grid-template-columns: 1fr;
+    }
+    .case-nav__link--next {
+      grid-column: 1;
+    }
+  }
+</style>

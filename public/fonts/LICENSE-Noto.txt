@@ -1,0 +1,3 @@
+glyph-telugu.woff2, glyph-kannada.woff2 and glyph-devanagari.woff2 are one-glyph subsets of
+Noto Sans Telugu, Noto Sans Kannada and Noto Sans Devanagari (Google Fonts),
+licensed under the SIL Open Font License 1.1: https://openfontlicense.org

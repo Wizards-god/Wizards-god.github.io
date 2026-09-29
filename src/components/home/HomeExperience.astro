@@ -1,0 +1,24 @@
+---
+import { getExperience } from '../../lib/content';
+import SectionHeading from '../SectionHeading.astro';
+import ExperienceTabs from '../ExperienceTabs.astro';
+
+const jobs = await getExperience();
+---
+
+{
+  jobs.length > 0 && (
+    <section id="experience" class="section wrap" aria-labelledby="experience-title">
+      <SectionHeading id="experience-title">Experience</SectionHeading>
+      <div class="experience">
+        <ExperienceTabs jobs={jobs} />
+      </div>
+    </section>
+  )
+}
+
+<style>
+  .experience {
+    max-width: 760px;
+  }
+</style>

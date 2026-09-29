@@ -1,0 +1,28 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import HomeHero from '../components/home/HomeHero.astro';
+import HomeAbout from '../components/home/HomeAbout.astro';
+import HomeExperience from '../components/home/HomeExperience.astro';
+import HomeFeatured from '../components/home/HomeFeatured.astro';
+import HomeContact from '../components/home/HomeContact.astro';
+import { site, type HomeSection } from '../data/site';
+import { personJsonLd, websiteJsonLd } from '../lib/seo';
+
+// Sections render in the order given by site.homeSections.
+const sections: Record<HomeSection, typeof HomeHero> = {
+  hero: HomeHero,
+  about: HomeAbout,
+  experience: HomeExperience,
+  featured: HomeFeatured,
+  contact: HomeContact,
+};
+---
+
+<BaseLayout ogImage="/og/home.png" jsonLd={[personJsonLd, websiteJsonLd]}>
+  {
+    site.homeSections.map((key) => {
+      const Section = sections[key];
+      return <Section />;
+    })
+  }
+</BaseLayout>

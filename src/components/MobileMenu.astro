@@ -1,0 +1,168 @@
+---
+import { site } from '../data/site';
+import Icon from './Icon.astro';
+
+const socials = [
+  { ...site.socials.github, icon: 'github' as const },
+  { ...site.socials.linkedin, icon: 'linkedin' as const },
+  { ...site.socials.orcid, icon: 'orcid' as const },
+];
+---
+
+<div class="drawer-root" transition:persist="drawer">
+  <div class="drawer-backdrop" data-drawer-backdrop hidden></div>
+  <aside id="drawer" class="drawer" data-drawer aria-label="Menu">
+    <nav aria-label="Mobile">
+      <ul class="drawer__links">
+        {
+          site.nav.map((item) => (
+            <li>
+              <a href={item.href} class="drawer__link">
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+        <li><a href="/bookshelf" class="drawer__link">Bookshelf</a></li>
+      </ul>
+    </nav>
+    <a href="/resume" class="btn btn--primary drawer__resume">Resume</a>
+    <ul class="drawer__socials">
+      {
+        socials.map((s) => (
+          <li>
+            <a href={s.url} class="drawer__social" target="_blank" rel="noopener noreferrer" aria-label={s.label}>
+              <Icon name={s.icon} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <a href={`mailto:${site.email}`} class="drawer__email">{site.email}</a>
+  </aside>
+</div>
+
+<style>
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-drawer);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-drawer);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+    width: min(75vw, 400px);
+    padding: 88px 24px 40px;
+    background: var(--surface);
+    box-shadow: -10px 0 30px -15px rgb(0 0 0 / 0.5);
+    overflow-y: auto;
+    visibility: hidden;
+    transform: translateX(100%);
+    transition:
+      transform calc(300ms * var(--slow)) var(--ease-ui),
+      visibility 0s linear calc(300ms * var(--slow));
+  }
+
+  .drawer:global(.is-open) {
+    visibility: visible;
+    transform: none;
+    transition:
+      transform calc(300ms * var(--slow)) var(--ease-ui),
+      visibility 0s;
+  }
+
+  .drawer__links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .drawer__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 48px;
+    padding: 0 16px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    letter-spacing: 0.02em;
+  }
+
+  .drawer__link:active {
+    color: var(--accent);
+  }
+
+  .drawer__resume {
+    min-width: 160px;
+  }
+
+  .drawer__socials {
+    display: flex;
+    gap: 12px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .drawer__social {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    color: var(--faint);
+  }
+
+  .drawer__social:active {
+    color: var(--text);
+  }
+
+  .drawer__email {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Page behind the open drawer blurs and dims; scrolling is locked. */
+  :global(html.menu-open) {
+    overflow: hidden;
+  }
+
+  :global(main),
+  :global(.site-footer) {
+    transition: filter calc(300ms * var(--slow)) var(--ease-ui);
+  }
+
+  :global(html.menu-open main),
+  :global(html.menu-open .site-footer) {
+    filter: blur(5px) brightness(0.7);
+  }
+
+  @media (min-width: 768px) {
+    .drawer,
+    .drawer-backdrop {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drawer,
+    .drawer:global(.is-open) {
+      transition: none;
+    }
+  }
+</style>

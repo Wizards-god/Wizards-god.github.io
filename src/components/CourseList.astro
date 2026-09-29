@@ -1,0 +1,109 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import PlaceholderTag from './PlaceholderTag.astro';
+
+interface Props {
+  groups: { term: string; courses: CollectionEntry<'courses'>[] }[];
+  headingLevel?: 'h2' | 'h3';
+}
+const { groups, headingLevel: H = 'h2' } = Astro.props;
+---
+
+<div class="courses">
+  {
+    groups.map((g) => (
+      <section class="term" data-reveal aria-label={g.term}>
+        <H class="term__title">{g.term}</H>
+        <ul class="term__list">
+          {g.courses.map((c) => (
+            <li class="course">
+              <span class="course__code">{c.data.code}</span>
+              <span class="course__title">
+                {c.data.title}
+                {c.data.notesPdf && (
+                  <a href={c.data.notesPdf} class="course__notes link link--quiet">
+                    notes<span class="ext" aria-hidden="true">↗</span>
+                  </a>
+                )}
+              </span>
+              <span class="course__status">
+                <PlaceholderTag show={c.data.placeholder} />
+                <span class="status-chip" data-status={c.data.status}>
+                  {c.data.status}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</div>
+
+<style>
+  .courses {
+    display: grid;
+    gap: 44px;
+  }
+
+  .term__title {
+    margin-bottom: 10px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+  }
+
+  .term__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .course {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 4px 16px;
+    align-items: baseline;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .course__code {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .course__title {
+    color: var(--text);
+    font-size: 16.5px;
+  }
+
+  .course__notes {
+    margin-left: 10px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .course__status {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-self: start;
+  }
+
+  @media (min-width: 640px) {
+    .course {
+      grid-template-columns: 110px 1fr auto;
+    }
+    .course__status {
+      grid-column: 3;
+      justify-self: end;
+    }
+  }
+</style>

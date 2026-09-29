@@ -1,0 +1,145 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import BookCard from '../components/BookCard.astro';
+import { getBooks } from '../lib/content';
+
+const LIMIT = 6;
+const books = await getBooks();
+const tags = [...new Set(books.flatMap((b) => b.data.tags))].sort();
+const years = [...new Set(books.map((b) => b.data.year))].sort((a, b) => b - a);
+---
+
+<BaseLayout
+  title="Bookshelf"
+  description="Books Parjanya Shankar has read, with a few sentences on each."
+  ogImage="/og/bookshelf.png"
+>
+  <div class="page wrap">
+    <header class="head">
+      <p class="eyebrow" data-enter style="--i: 0">bookshelf</p>
+      <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Bookshelf</h1>
+      <p class="lede" data-enter style="--i: 2">
+        Books that stayed with me, favourites first, with a line or two on why.
+      </p>
+    </header>
+
+    <div data-filter-root data-limit={LIMIT} data-noun="books">
+      <div class="filters js-only" data-enter style="--i: 3">
+        <div class="chips" role="group" aria-label="Filter by tag">
+          <button type="button" class="chip" data-filter-key="tags" data-filter-value="all" aria-pressed="true">all</button>
+          {
+            tags.map((t) => (
+              <button type="button" class="chip" data-filter-key="tags" data-filter-value={t} aria-pressed="false">
+                {t}
+              </button>
+            ))
+          }
+        </div>
+        <div class="chips" role="group" aria-label="Filter by year read">
+          <button type="button" class="chip" data-filter-key="year" data-filter-value="all" aria-pressed="true">any year</button>
+          {
+            years.map((y) => (
+              <button type="button" class="chip" data-filter-key="year" data-filter-value={String(y)} aria-pressed="false">
+                {y}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+
+      <ul class="books" data-filter-list data-reveal-stagger>
+        {books.map((b, i) => <BookCard book={b} hidden={i >= LIMIT} />)}
+      </ul>
+      <p class="empty" data-filter-empty hidden>No books match those filters.</p>
+      {
+        books.length > LIMIT && (
+          <p class="more js-only">
+            <button type="button" class="btn" data-show-more aria-expanded="false">
+              Show more ({books.length - LIMIT})
+            </button>
+          </p>
+        )
+      }
+      <p class="visually-hidden" aria-live="polite" data-filter-status></p>
+    </div>
+    <noscript><style>.books [data-item][hidden] { display: list-item !important; }</style></noscript>
+  </div>
+</BaseLayout>
+
+<style>
+  .head {
+    margin-bottom: 40px;
+  }
+
+  .head .lede {
+    margin-top: 14px;
+  }
+
+  :global(html:not(.js)) .js-only {
+    display: none;
+  }
+
+  .filters {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    transition:
+      background-color var(--dur-ui) var(--ease-ui),
+      border-color var(--dur-ui) var(--ease-ui),
+      color var(--dur-ui) var(--ease-ui);
+  }
+
+  .chip[aria-pressed='true'] {
+    border-color: var(--faint);
+    color: var(--text);
+    background: var(--accent-tint);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .chip:hover {
+      color: var(--text);
+      border-color: var(--faint);
+    }
+  }
+
+  .books {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .books :global([data-item][hidden]) {
+    display: none;
+  }
+
+  .more {
+    margin-top: 40px;
+    text-align: center;
+  }
+
+  .empty {
+    padding: 40px 0;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 14px;
+  }
+</style>

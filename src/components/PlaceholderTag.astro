@@ -1,0 +1,9 @@
+---
+// Visible marker on unverified stand-in content (see site.showPlaceholders).
+interface Props {
+  show?: boolean;
+}
+const { show = true } = Astro.props;
+---
+
+{show && <span class="placeholder-tag" title="Placeholder content: replace before launch">placeholder</span>}

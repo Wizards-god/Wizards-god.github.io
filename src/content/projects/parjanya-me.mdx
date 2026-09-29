@@ -1,0 +1,75 @@
+---
+title: parjanya.me
+summary: This site. A static, multi-page personal site whose intro types my name and then zooms through the hole in a letter, with shutter page transitions and a curtain theme switch.
+date: 2026-09-29
+status: in-progress
+featured: true
+order: 1
+tags: [web, typescript]
+stack: [Astro, TypeScript, Tailwind CSS, SVG]
+links:
+  github: https://github.com/Wizards-god/Wizards-god.github.io
+  live: https://parjanya.me
+cover: ../../assets/projects/parjanya-me-cover.png
+coverAlt: The home page of parjanya.me in dark mode, showing the name, a short bio and a small ASCII price chart.
+thumb: ../../assets/projects/parjanya-me-thumb.png
+metrics:
+  - { label: "Lighthouse, desktop", value: "100 / 100 / 100 / 100" }
+  - { label: "All JavaScript, gzipped", value: "17 KB" }
+  - { label: "Intro zoom", value: "83× – 165×" }
+  - { label: "Layout shift (CLS)", value: "0" }
+---
+
+import Pipeline from '../../components/Pipeline.astro';
+
+## Problem
+
+I wanted one place for projects, coursework and writing that stays honest and current. Plenty of student portfolios look sharp on launch day and then freeze: dates stuck on "Present", a resume link that 404s. The site had to be cheap to keep up to date, so it needed to be static, free to host and driven by plain content files.
+
+It also needed some personality without gimmicks: a charcoal palette with one muted accent, a neat typeface, and motion that feels deliberate rather than decorative.
+
+## Approach
+
+- **Static first.** Astro renders every page to HTML at build time. JavaScript ships only for the interactive parts (theme, glow, transitions, tabs, filters), and the intro's code loads only on the visits where it actually plays.
+- **Content as data.** Projects, experience, courses, awards, books and posts are content collections with Zod schemas. A featured project without a cover image fails the build, and a status line older than 90 days prints a warning.
+- **Intro without a web font.** A build script uses `opentype.js` to turn "parjanya." into SVG outlines, including the inner contour (the counter) of the second "a". The intro therefore paints on the very first frame.
+- **Transitions with a real router.** Astro's client router swaps pages without a full reload, so a pair of shutter panels can close while the next page is fetched and open once it has painted.
+
+## Results
+
+Measured on the production build with `?intro=0`, as the spec asks, so the intro doesn't skew the numbers:
+
+- Lighthouse scores **100** for performance, accessibility, best practices and SEO on desktop (home, projects and a post), and **98–100** on the mobile profile. Cumulative layout shift is **0**.
+- The whole site ships about **17 KB** of gzipped JavaScript; the intro's 3 KB loads only on the visit where it plays.
+- The zoom target works out to **83×** on a 1440×900 laptop screen and **165×** on a 375×812 phone.
+- The intro zooms through the counter of the "a" crisply at 100× and beyond, because the scale is applied as an SVG `transform` attribute (re-rendered as vectors every frame) rather than as a CSS transform on a bitmap.
+- Every page works without JavaScript. Theme, transitions and reveals are layered on top.
+- Motion respects `prefers-reduced-motion`: the intro becomes a short fade, the shutter a crossfade, and scroll reveals are off.
+
+## Pipeline
+
+<Pipeline
+  steps={[
+    { title: 'Content', detail: 'MDX, Markdown and YAML files' },
+    { title: 'Validate', detail: 'Zod schemas and build-time checks' },
+    { title: 'Generate', detail: 'intro glyphs, OG images, RSS, sitemap' },
+    { title: 'Build', detail: 'Astro static output with Shiki and KaTeX' },
+    { title: 'Deploy', detail: 'GitHub Actions to GitHub Pages' },
+  ]}
+/>
+
+## Challenges
+
+- **Choreographing navigation.** Closing the shutter and fetching the next page run in parallel, so a fast connection never waits for the animation and a slow one never shows a half-open page.
+- **Finding the zoom target.** The intro binary-searches for the smallest scale at which all four corners of the viewport sit inside the letter's counter, using `isPointInFill`. That comes out at 83× on a laptop and 165× on a phone.
+- **No flash of the wrong theme.** A tiny inline script sets the theme before first paint and re-applies it after every client-side page swap.
+
+## Limitations
+
+- The intro relies on SVG hit-testing (`isPointInFill`). Browsers without it fall back to a zoom estimated from the counter's bounding box, which overshoots slightly.
+- The "ask" box is a keyword search over the site's own content, not a language model, and it says so.
+
+## What's next
+
+- Replace the placeholder entries with real projects, courses and experience.
+- Add course notes as PDFs, and project write-ups as they happen.

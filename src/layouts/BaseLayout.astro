@@ -1,0 +1,83 @@
+---
+import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
+import Head, { type SeoProps } from '../components/Head.astro';
+import Header from '../components/Header.astro';
+import MobileMenu from '../components/MobileMenu.astro';
+import SideRails from '../components/SideRails.astro';
+import Footer from '../components/Footer.astro';
+import Overlays from '../components/Overlays.astro';
+import Intro from '../components/Intro.astro';
+import Ask from '../components/Ask.astro';
+import { site } from '../data/site';
+
+type Props = SeoProps;
+const seo = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" transition:animate="none">
+  <head>
+    <Head {...seo} />
+    <ClientRouter />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <Overlays />
+    <Header />
+    <MobileMenu />
+    <SideRails />
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+    <Footer />
+    {site.ask.enabled && <Ask />}
+    <Intro />
+
+    <!-- While the intro plays, keep focus from wandering behind the overlay. -->
+    <script is:inline>
+      (function () {
+        if (!document.documentElement.classList.contains('intro-active')) return;
+        var nodes = document.querySelectorAll('main, .site-footer, [data-header], .rails, .skip-link, [data-ask]');
+        for (var i = 0; i < nodes.length; i++) {
+          nodes[i].inert = true;
+          nodes[i].setAttribute('data-intro-inert', '');
+        }
+      })();
+    </script>
+    <script>
+      import '../scripts/main';
+    </script>
+  </body>
+</html>
+
+<style>
+  .skip-link {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: calc(var(--z-intro) + 1);
+    padding: 12px 16px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transform: translateY(-200%);
+    transition: transform var(--dur-ui) var(--ease-ui);
+  }
+
+  .skip-link:focus-visible,
+  .skip-link:focus {
+    transform: none;
+  }
+
+  main {
+    position: relative;
+    z-index: var(--z-content);
+    display: block;
+    outline: none;
+  }
+</style>

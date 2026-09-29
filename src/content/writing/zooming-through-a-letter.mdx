@@ -1,0 +1,72 @@
+---
+title: Zooming through a letter
+date: 2026-09-29
+summary: How this site's intro types "parjanya." and then flies through the hole in the second "a", and why the zoom is interpolated in log space.
+tags: [web, svg, math]
+draft: false
+---
+
+The first time you open this site in a browser session, you see a "p" and a blinking full stop. The rest of the name types in, and then the page zooms into the second "a" until the hole in the letter becomes the whole screen and the site is sitting behind it.
+
+Here is how that works, and the one piece of maths that makes it feel right.
+
+## The letters are paths, not text
+
+A web font takes time to load, and the intro has to be on screen from the very first frame. So the letters are not text at all. At build time, a script opens the same font file the site uses (Geist Medium) with `opentype.js` and writes out one SVG path per character, already positioned with the font's advance widths and kerning.[^kerning]
+
+The script also splits out one special shape: the **counter** of the second "a", the enclosed hole in its lower bowl. In Geist Medium that "a" has exactly two contours, and the inner one is 243 by 179 font units.
+
+## A background with a hole in it
+
+The overlay's background is a single path drawn with `fill-rule="evenodd"`. It is a huge rectangle with the counter's outline added as a second subpath, so wherever the counter sits, the background has a hole, and you can see the real page through it.
+
+## Scaling about a point
+
+To zoom *into* the counter, every point $p$ in the word is scaled about the counter's centre $c$:
+
+$$
+T_s(p) = c + s\,(p - c)
+$$
+
+In SVG this is `translate(cx cy) scale(s) translate(-cx -cy)`, written to the group's `transform` attribute on every frame. Because the attribute changes the geometry itself, the browser re-renders crisp vector edges at any scale. A CSS transform would scale a cached bitmap and blur at 100×.
+
+## How far to zoom
+
+The zoom is finished when the hole covers the whole screen, which happens when all four viewport corners are inside the counter. Screens differ, so the target scale is found at runtime with a binary search:
+
+```ts {4-6}
+function targetScale(counter: SVGPathElement, corners: DOMPoint[]) {
+  let lo = 1, hi = 2000;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const inside = corners.every((q) => counter.isPointInFill(toLocal(q, mid)));
+    inside ? (hi = mid) : (lo = mid);
+  }
+  return hi * 1.1; // a little margin past "just covered"
+}
+```
+
+`toLocal` inverts $T_s$ to map a screen corner back into the counter's own coordinates. That works out to about 83× on a 1440×900 laptop screen and 165× on a 375×812 phone.
+
+## Why log space
+
+The obvious approach is to animate $s$ linearly from $1$ to $s_{\max}$. It looks wrong: nearly all the visible motion happens in the first few frames, and the rest is a slow crawl. What the eye tracks is *relative* change in size, so the rate that feels constant is the rate of change of $\ln s$.
+
+So the intro interpolates the exponent instead:
+
+$$
+s(t) = s_{\max}^{\,e(t)}, \qquad \frac{d}{dt}\ln s(t) = e'(t)\,\ln s_{\max},
+$$
+
+where $e$ is an easing curve on $t \in [0, 1]$. With $e(t) = t$ the push-in feels like moving at a constant speed. The site uses an ease-in, so the zoom starts gently and then accelerates through the letter.[^expo]
+
+## The small things
+
+- The letters fade to the background colour during the first part of the zoom, so there is no bright flash of white strokes flying past.
+- Any click, tap or key press skips ahead to a fast version of the zoom.
+- With `prefers-reduced-motion` on, the intro is just the word for a moment and then a short fade.
+- It plays once per browser session. After that, page loads use the shutter transition instead.
+
+[^kerning]: Kerning adjusts the space between specific pairs of letters. Without it, "r" and "j" would sit visibly too far apart.
+
+[^expo]: An exponential ease-in on top of the log-space interpolation would spend almost the whole animation near $s = 1$. A cubic ease-in is a better match.

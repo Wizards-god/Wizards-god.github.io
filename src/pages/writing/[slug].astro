@@ -1,0 +1,155 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+import ReadingLayout from '../../layouts/ReadingLayout.astro';
+import Icon from '../../components/Icon.astro';
+import { getPosts, postUrl } from '../../lib/content';
+import { fullDate, isoDate, readingTime } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    // Posts are newest first, so the "next" (newer) one sits before this one.
+    props: { post, newer: posts[i - 1] ?? null, older: posts[i + 1] ?? null },
+  }));
+}
+
+interface Props {
+  post: CollectionEntry<'writing'>;
+  newer: CollectionEntry<'writing'> | null;
+  older: CollectionEntry<'writing'> | null;
+}
+
+const { post, newer, older } = Astro.props;
+const { Content } = await render(post);
+const d = post.data;
+const minutes = readingTime(post.body ?? '');
+---
+
+<ReadingLayout
+  title={d.title}
+  description={d.summary}
+  ogImage={`/og/writing/${post.id}.png`}
+  type="article"
+  published={d.date}
+  modified={d.updated}
+  back={{ href: '/writing', label: 'all writing' }}
+>
+  <Fragment slot="header">
+    <p class="post-meta" data-enter style="--i: 1">
+      <time datetime={isoDate(d.date)}>{fullDate(d.date)}</time>
+      <span aria-hidden="true">·</span>
+      <span>{minutes} min read</span>
+      {
+        d.updated && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>
+              updated <time datetime={isoDate(d.updated)}>{fullDate(d.updated)}</time>
+            </span>
+          </>
+        )
+      }
+    </p>
+    <h1 class="page-title post-title" data-enter style="--i: 2" tabindex="-1">{d.title}</h1>
+    <p class="lede post-summary" data-enter style="--i: 3">{d.summary}</p>
+    {
+      d.tags.length > 0 && (
+        <ul class="tag-list post-tags" data-enter style="--i: 4">
+          {d.tags.map((t) => (
+            <li class="tag">#{t}</li>
+          ))}
+        </ul>
+      )
+    }
+  </Fragment>
+
+  <Content />
+
+  <nav slot="after" class="post-nav" aria-label="More writing">
+    {
+      older && (
+        <a href={postUrl(older)} class="post-nav__link">
+          <span class="label">
+            <Icon name="arrow-left" size={14} /> older
+          </span>
+          <span class="post-nav__title">{older.data.title}</span>
+        </a>
+      )
+    }
+    {
+      newer && (
+        <a href={postUrl(newer)} class="post-nav__link post-nav__link--newer">
+          <span class="label">
+            newer <Icon name="arrow-right" size={14} />
+          </span>
+          <span class="post-nav__title">{newer.data.title}</span>
+        </a>
+      )
+    }
+    <a href="/writing" class="post-nav__all link link--quiet">all writing</a>
+  </nav>
+</ReadingLayout>
+
+<style>
+  .post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .post-title {
+    margin-top: 12px;
+  }
+
+  .post-summary {
+    margin-top: 16px;
+  }
+
+  .post-tags {
+    margin-top: 18px;
+  }
+
+  .post-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 64px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+  }
+
+  .post-nav__link {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .post-nav__link .label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .post-nav__link--newer {
+    grid-column: 2;
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .post-nav__title {
+    color: var(--text);
+    font-weight: 560;
+  }
+
+  .post-nav__all {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+</style>
