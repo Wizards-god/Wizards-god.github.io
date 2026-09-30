@@ -19,6 +19,12 @@ const RECT = `M${-HOLE_R} ${-HOLE_R}H${HOLE_R}V${HOLE_R}H${-HOLE_R}Z`;
 /** Ease-in on the exponent: starts gently, then accelerates through the letter. */
 const easeIn = (t: number) => t * t * t;
 
+/** 0 → 1 between a and b, with eased ends (smoothstep). */
+const smooth = (a: number, b: number, t: number) => {
+  const x = Math.min(1, Math.max(0, (t - a) / (b - a)));
+  return x * x * (3 - 2 * x);
+};
+
 function pageLoaded() {
   const load =
     document.readyState === 'complete'
@@ -49,6 +55,7 @@ export async function runIntro(cfg: IntroConfig) {
   const ink = svg.querySelector<SVGGElement>('[data-intro-ink]')!;
   const letters = [...svg.querySelectorAll<SVGPathElement>('[data-intro-letter]')];
   const period = svg.querySelector<SVGPathElement>('[data-intro-period]')!;
+  const cover = svg.querySelector<SVGPathElement>('[data-intro-cover]');
   const counter = svg.querySelector<SVGPathElement>('[data-intro-counter]')!;
   const main = document.getElementById('main');
   const reduced = html.classList.contains('intro-reduced');
@@ -78,7 +85,6 @@ export async function runIntro(cfg: IntroConfig) {
   const setTyped = (n: number) => {
     letters.forEach((l, i) => l.classList.toggle('is-on', i < n));
     period.setAttribute('transform', `translate(${G.period.x[n - 1]} 0)`);
-    if (n > G.counter.index) addHole(); // early peek once the second "a" is on screen
   };
 
   const typeIn = async () => {
@@ -156,7 +162,10 @@ export async function runIntro(cfg: IntroConfig) {
         const t = Math.min(1, (now - start) / D);
         const s = Math.exp(logMax * easeIn(t)); // log-space: s = sMax ** e(t)
         zoomGroup.setAttribute('transform', `translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`);
-        ink.style.opacity = String(Math.max(0, 1 - t / 0.45)); // ink fades to the background first
+        // The hole starts opaque and turns see-through over the first ~40% of the zoom.
+        if (cover) cover.style.opacity = String(1 - smooth(0, 0.4, t));
+        // The letters fade to the background slowly, gone by ~70% of the zoom.
+        ink.style.opacity = String(1 - smooth(0.12, 0.7, t));
         if (t < 1) requestAnimationFrame(frame);
         else resolve();
       };

@@ -55,6 +55,10 @@ function keyForPath(path: string): string | null {
 
 let currentKey: string | null = null;
 
+/**
+ * Put the accent underline exactly under the active link's text. Measured
+ * from the label's box (not the padded link), so padding never widens it.
+ */
 function moveIndicator(key: string | null, instant = false) {
   const nav = document.querySelector<HTMLElement>('[data-site-nav]');
   const bar = nav?.querySelector<HTMLElement>('.site-nav__indicator');
@@ -62,13 +66,24 @@ function moveIndicator(key: string | null, instant = false) {
   currentKey = key;
   const link = key ? nav.querySelector<HTMLElement>(`[data-nav-key="${key}"]`) : null;
   nav.querySelectorAll('[data-nav-key]').forEach((a) => a.classList.toggle('is-active', a === link));
-  if (!link || link.offsetWidth === 0) {
+  const label = link?.querySelector<HTMLElement>('.site-nav__label') ?? link;
+  if (!label || label.offsetWidth === 0) {
     bar.style.opacity = '0';
     return;
   }
+  // Layout offsets (not getBoundingClientRect) so the nav items' entrance
+  // transform can't skew the measurement. The nav is the offsetParent.
+  let x = 0;
+  let y = 0;
+  for (let n: HTMLElement | null = label; n && n !== nav; n = n.offsetParent as HTMLElement | null) {
+    x += n.offsetLeft;
+    y += n.offsetTop;
+  }
+  y += label.offsetHeight + 3;
+  const w = label.offsetWidth;
   if (instant) bar.classList.add('no-anim');
   bar.style.opacity = '1';
-  bar.style.transform = `translateX(${link.offsetLeft}px) scaleX(${link.offsetWidth})`;
+  bar.style.transform = `translate(${x}px, ${y}px) scaleX(${w})`;
   if (instant) requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.remove('no-anim')));
 }
 
@@ -111,7 +126,16 @@ function initIndicator() {
     onPage(first);
     first = false;
   });
+  // Re-measure whenever the labels change size: window resizes, and the web
+  // font swapping in after the first measurement (which shifts every label).
+  const nav = document.querySelector<HTMLElement>('[data-site-nav]');
+  if (nav && 'ResizeObserver' in window) {
+    const ro = new ResizeObserver(() => moveIndicator(currentKey, true));
+    ro.observe(nav);
+    nav.querySelectorAll('.site-nav__label').forEach((l) => ro.observe(l));
+  }
   addEventListener('resize', () => moveIndicator(currentKey, true), { passive: true });
+  document.fonts?.addEventListener?.('loadingdone', () => moveIndicator(currentKey, true));
   document.fonts?.ready.then(() => moveIndicator(currentKey, true));
 }
 

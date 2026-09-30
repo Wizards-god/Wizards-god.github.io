@@ -1,5 +1,5 @@
 ---
-company: Student org
+company: Campus club
 role: Member
 location: Urbana, IL
 start: 2026-09
@@ -7,6 +7,5 @@ end: null
 order: 2
 placeholder: true
 bullets:
-  - Placeholder entry. Clubs, competition teams and TA roles all fit here.
-  - Mention the scope (team size, events run, people taught).
+  - A short note on what I do here is on its way.
 ---

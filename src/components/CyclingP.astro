@@ -1,0 +1,33 @@
+---
+// "p." whose letter cycles through English, Kannada, Telugu and Sanskrit
+// (p, ಪ, ప, प). Driven by initGlyphCycle() in scripts/interactions.ts.
+---
+
+<p class="cycle-p" aria-hidden="true">
+  <span class="cycle-p__glyph" data-p-glyph lang="en">p</span><span class="cycle-p__dot">.</span>
+</p>
+
+<style>
+  .cycle-p {
+    display: inline-flex;
+    align-items: baseline;
+    color: var(--text);
+    font-family: var(--font-glyph);
+    font-size: clamp(30px, 5vw, 46px);
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  /* Fixed-width slot, right-aligned against the full stop, so the dot never
+     jumps when a wider letter swaps in. */
+  .cycle-p__glyph {
+    display: inline-block;
+    min-width: 0.9em;
+    text-align: right;
+  }
+
+  .cycle-p__dot {
+    color: var(--accent);
+  }
+</style>

@@ -7,9 +7,9 @@ export const site = {
   name: 'Parjanya Shankar',
   wordmark: 'parjanya.',
   domain: 'https://parjanya.me',
-  tagline: 'CS + Math @ UIUC · building toward quant research',
+  tagline: 'CS @ UIUC · building toward quant research',
   description:
-    'Parjanya Shankar: Computer Science student at the University of Illinois Urbana-Champaign (Math minor, Class of 2030), working toward quantitative research.',
+    'Parjanya Shankar: Computer Science student at the University of Illinois Urbana-Champaign (Class of 2030, intended Math minor), working toward quantitative research.',
 
   status: {
     text: 'Open to research & SWE internships · Summer 2027',

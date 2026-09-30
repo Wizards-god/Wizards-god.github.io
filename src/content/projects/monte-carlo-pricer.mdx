@@ -1,6 +1,6 @@
 ---
 title: Monte Carlo option pricer
-summary: Placeholder project. A slot for a quant project, for example pricing European options by simulation and checking convergence against Black–Scholes.
+summary: Planned. Pricing European options by simulating many price paths, then checking how quickly the estimate converges to the Black–Scholes price.
 date: 2026-08-15
 status: in-progress
 featured: true
@@ -8,36 +8,16 @@ order: 3
 tags: [Python, quant]
 stack: [Python, NumPy]
 cover: ../../assets/projects/monte-carlo-cover.png
-coverAlt: Placeholder art showing many simulated random-walk paths, with their mean highlighted.
+coverAlt: Many simulated random-walk paths fanning out, with their average highlighted.
 thumb: ../../assets/projects/monte-carlo-thumb.png
 metrics: []
 placeholder: true
 ---
 
-## Problem
+This one is still in the works. The idea is simple: simulate a large number of price paths, average the discounted payoff, and see how close the estimate gets to the closed-form price,
 
-Placeholder case study. Describe the question the project answers.
+$$
+\hat{V} = e^{-rT}\,\frac{1}{N}\sum_{i=1}^{N} \max\bigl(S_T^{(i)} - K,\ 0\bigr).
+$$
 
-## Approach
-
-Describe the method. Math works here too, for example $\hat{V} = e^{-rT}\,\frac{1}{N}\sum_{i=1}^{N} \max(S_T^{(i)} - K,\ 0)$.
-
-## Results
-
-State results with numbers and uncertainty.
-
-## Pipeline
-
-Show how data flows through the project.
-
-## Challenges
-
-Describe what was hard.
-
-## Limitations
-
-Describe what the results do not show.
-
-## What's next
-
-Describe the next step.
+The full write-up, with results and limitations, will go here once it's done.

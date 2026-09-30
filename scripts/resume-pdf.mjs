@@ -1,11 +1,13 @@
-// Prints the HTML resume (/resume) to public/resume.pdf with headless Chrome
-// or Edge, so the PDF always matches the page. Run after editing resume content:
+// Prints the HTML resume to public/resume.pdf with headless Chrome or Edge.
+// The resume route (src/pages/resume-print/) only exists when RESUME_PRINT=1,
+// so this script does its own build into a temporary folder, prints
+// /resume-print/, and cleans up. Run after editing resume content:
 //
-//   npm run build && npm run resume:pdf && npm run build
+//   npm run resume:pdf
 //
 // Set CHROME_PATH if your browser lives somewhere unusual.
 
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { promisify } from 'node:util';
@@ -35,13 +37,21 @@ if (!browser) {
   console.error('[resume] No Chrome/Edge found. Set CHROME_PATH to a Chromium-based browser.');
   process.exit(1);
 }
-if (!existsSync(join(root, 'dist', 'resume', 'index.html'))) {
-  console.error('[resume] dist/ is missing the resume page. Run `npm run build` first.');
+// Build the site, including the private print route, into a scratch folder
+// inside the project (Astro moves files with rename, which can't cross drives).
+const dist = join(root, 'node_modules', '.cache', 'resume-print');
+rmSync(dist, { recursive: true, force: true });
+execFileSync(process.execPath, [join(root, 'node_modules/astro/bin/astro.mjs'), 'build', '--outDir', dist], {
+  cwd: root,
+  env: { ...process.env, RESUME_PRINT: '1' },
+  stdio: 'ignore',
+});
+if (!existsSync(join(dist, 'resume-print', 'index.html'))) {
+  console.error('[resume] the print build did not produce /resume-print/.');
   process.exit(1);
 }
 
-// Serve dist/ with a minimal static server (independent of any running dev/preview server).
-const dist = join(root, 'dist');
+// Serve the temp build with a minimal static server (independent of any dev/preview server).
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.avif': 'image/avif',
@@ -63,7 +73,7 @@ await new Promise((r) => server.listen(PORT, '127.0.0.1', r));
 
 const profile = mkdtempSync(join(tmpdir(), 'resume-pdf-'));
 try {
-  const url = `http://127.0.0.1:${PORT}/resume/?intro=0`;
+  const url = `http://127.0.0.1:${PORT}/resume-print/?intro=0`;
   // Async on purpose: a sync call would block the event loop serving the page.
   await promisify(execFile)(
     browser,
@@ -84,4 +94,5 @@ try {
 } finally {
   server.close();
   rmSync(profile, { recursive: true, force: true });
+  rmSync(dist, { recursive: true, force: true });
 }

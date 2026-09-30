@@ -4,6 +4,6 @@ author: "John C. Hull"
 year: 2026
 favorite: false
 tags: [finance, markets]
-reflection: Placeholder. Add one to three sentences on what stuck with you, or delete this book.
+reflection: A few thoughts on this one are coming soon.
 placeholder: true
 ---

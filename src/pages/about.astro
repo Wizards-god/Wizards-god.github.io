@@ -20,7 +20,7 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
 
 <BaseLayout
   title="About"
-  description="About Parjanya Shankar: Computer Science at UIUC (Math minor, Class of 2030), background, what he's working on now, and awards."
+  description="About Parjanya Shankar: Computer Science at UIUC (Class of 2030, intended Math minor), background, what he's working on now, and awards."
   ogImage="/og/about.png"
   jsonLd={[personJsonLd]}
 >
@@ -39,7 +39,7 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
           <span class="duotone">
             <Image
               src={portrait}
-              alt="Placeholder portrait: a halftone letter p."
+              alt="A halftone letter p, standing in for a photo."
               widths={[320, 480, 720]}
               sizes="(min-width: 768px) 320px, 80vw"
               loading="eager"
@@ -106,9 +106,8 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
               ))}
             </ul>
             <p class="hint">
-              Hover or focus the <span class="mono">parjanya.</span> wordmark in the header: the <span class="mono">p</span>{' '}
-              cycles through Telugu <span lang="te">ప</span>, Kannada <span lang="kn">ಪ</span> and Devanagari{' '}
-              <span lang="hi">प</span>.
+              Hover over my name in the top corner and it switches between Kannada <span lang="kn">ಪರ್ಜನ್ಯ</span>,
+              Telugu <span lang="te">పర్జన్య</span> and Sanskrit <span lang="sa">पर्जन्यः</span>.
             </p>
           </div>
         )

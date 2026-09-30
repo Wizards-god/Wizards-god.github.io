@@ -3,7 +3,7 @@
 
 import { prefersReducedMotion, dur } from './motion';
 
-const SIZE = 900;
+const SIZE = 450; // keep in sync with .glow in components/Overlays.astro
 const LERP = 0.15;
 
 export function initGlow() {

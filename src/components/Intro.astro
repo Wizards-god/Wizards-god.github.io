@@ -24,6 +24,8 @@ const rect = `M${-R} ${-R}H${R}V${R}H${-R}Z`;
   >
     <g data-intro-zoom>
       <path class="intro__bg" data-intro-bg fill-rule="evenodd" d={rect}></path>
+      <!-- Covers the hole in the "a"; fades out as the zoom starts so the site shows through gradually. -->
+      <path class="intro__cover" data-intro-cover d={counter.d}></path>
       <g class="intro__ink" data-intro-ink>
         {letters.map((l, i) => <path class:list={['intro__letter', { 'is-on': i === 0 }]} data-intro-letter d={l.d} />)}
         <path class="intro__period" data-intro-period d={period.d} transform={`translate(${period.x[0]} 0)`}></path>
@@ -72,6 +74,10 @@ const rect = `M${-R} ${-R}H${R}V${R}H${-R}Z`;
   }
 
   .intro__bg {
+    fill: var(--bg);
+  }
+
+  .intro__cover {
     fill: var(--bg);
   }
 

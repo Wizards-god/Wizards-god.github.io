@@ -9,7 +9,7 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
   <div class="site-header__bg" aria-hidden="true"></div>
   <div class="site-header__inner">
     <a href="/" class="wordmark enter-chrome" style="--i: 0" data-wordmark aria-label={`${site.name}, home`}>
-      <span class="wordmark__p" data-glyph-cycle>p</span>arjanya<span class="wordmark__dot">.</span>
+      <span class="wordmark__name" data-name-cycle lang="en">parjanya</span><span class="wordmark__dot">.</span>
     </a>
 
     <nav class="site-nav" aria-label="Main" data-site-nav>
@@ -23,7 +23,7 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
                 data-nav-key={item.key}
                 aria-current={seg === item.key ? 'page' : undefined}
               >
-                {item.label}
+                <span class="site-nav__label">{item.label}</span>
               </a>
             </li>
           ))
@@ -126,13 +126,25 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
     letter-spacing: -0.03em;
   }
 
-  .wordmark__p {
+  /* Hover cycles the name through Kannada, Telugu and Sanskrit (scripts/interactions.ts). */
+  .wordmark__name {
     display: inline-block;
     font-family: var(--font-glyph);
+    white-space: nowrap;
   }
 
   .wordmark__dot {
     color: var(--accent);
+  }
+
+  .wordmark:global(.is-cycling) .wordmark__dot {
+    animation: wordmark-blink calc(1s * var(--slow)) steps(1) infinite;
+  }
+
+  @keyframes wordmark-blink {
+    50% {
+      opacity: 0;
+    }
   }
 
   /* ---- nav ---- */
@@ -173,11 +185,12 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
     }
   }
 
-  /* One 1px-wide bar, positioned and stretched with a transform. */
+  /* One 1px-wide bar, moved and stretched with a transform to sit exactly
+     under the active label's text (not the padded link box). */
   .site-nav__indicator {
     position: absolute;
     left: 0;
-    bottom: 6px;
+    top: 0;
     width: 1px;
     height: 1px;
     background: var(--accent);
