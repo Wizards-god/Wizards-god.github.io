@@ -98,9 +98,9 @@ export async function GET() {
       id: 'site',
       title: 'This site',
       url: '/projects/parjanya-me',
-      answer: 'This site is static (Astro and TypeScript) and hosted on GitHub Pages. This box is a keyword search over the site built at build time. It is not an AI.',
+      answer: 'This site is static (Astro and TypeScript) and hosted on Vercel. This box is a keyword search over the site built at build time. It is not an AI.',
       keywords: ['site', 'website', 'built', 'stack', 'astro', 'ai', 'bot', 'chatbot', 'how', 'work', 'intro', 'animation'],
-      text: 'astro typescript tailwind static site github pages intro shutter theme ask box keyword search',
+      text: 'astro typescript tailwind static site vercel intro shutter theme ask box keyword search',
     },
     {
       id: 'coursework',

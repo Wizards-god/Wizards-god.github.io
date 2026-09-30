@@ -1,6 +1,6 @@
 # parjanya.me
 
-Personal site of Parjanya Shankar. Static Astro site, deployed to GitHub Pages at [parjanya.me](https://parjanya.me).
+Personal site of Parjanya Shankar. Static Astro site, hosted on Vercel at [parjanya.me](https://parjanya.me).
 
 Stack: Astro 7, TypeScript, Tailwind CSS v4, MDX (KaTeX math, Shiki code blocks), small vanilla-TS modules for the interactions. No server, no database, no secrets.
 
@@ -54,12 +54,9 @@ This does its own temporary build and needs Chrome or Edge installed (set `CHROM
 
 ## Deploying
 
-`.github/workflows/deploy.yml` type-checks, builds and link-checks every push and pull request. Pushes to `main` deploy to GitHub Pages. One-time setup:
+The site is hosted on Vercel, which builds and deploys every push to `main` automatically (framework preset: Astro, build command `npm run build`, output `dist/`). Vercel runs the `prebuild` step too, so the intro glyphs and favicons are regenerated on every deploy.
 
-1. Repo **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. Keep `public/CNAME` (`parjanya.me`), and tick **Enforce HTTPS** once the certificate is issued.
-
-A Lighthouse CI job reports scores against `lighthouserc.json`. It's informational and never blocks a deploy.
+`.github/workflows/ci.yml` runs on every push and pull request. It type-checks, builds, runs the link checker, and posts an informational Lighthouse report against `lighthouserc.json`. It doesn't deploy anything.
 
 ## How the moving parts work
 

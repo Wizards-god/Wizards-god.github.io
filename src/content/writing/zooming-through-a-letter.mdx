@@ -1,40 +1,40 @@
 ---
 title: Zooming through a letter
 date: 2026-09-29
-summary: How the intro types out "parjanya." and then flies through the hole in the second "a", and why the zoom works in log space.
+summary: How I made the intro type out "parjanya." and then fly through the hole in the second "a", and why the zoom works in log space.
 tags: [web, svg, math]
 draft: false
 ---
 
-The first time you open this site in a browser session, you get a "p" and a blinking full stop. The rest of my name types in, and then the page zooms into the second "a" until the hole in the letter fills the whole screen and the site is sitting right behind it.
+When I was planning this site, I wanted the first thing you see to be my name, and then I wanted the name itself to become the way in. So the first time you open the site in a browser session, you get a "p" and a blinking full stop. The rest of my name types in, and then the page zooms into the second "a" until the hole in that letter fills the whole screen and the site is sitting right behind it.
 
-Here's how that works, plus the one bit of maths that makes it feel right.
+Here's how I built it, plus the one bit of maths that makes it feel right.
 
 ## The letters are paths, not text
 
-Web fonts take a moment to load, and I wanted the intro on screen from the very first frame, so the letters aren't text at all. When the site builds, a script opens the same font file the site uses (Geist Medium) with `opentype.js` and saves each character as an SVG path, already spaced out using the font's own advance widths and kerning.[^kerning]
+Web fonts take a moment to load, and I wanted the intro on screen from the very first frame. So my letters aren't text at all. When the site builds, a script I wrote opens the same font file the site uses (Geist Medium) with `opentype.js` and saves each character as an SVG path, already spaced out with the font's own advance widths and kerning.[^kerning]
 
-It also pulls out one special shape: the **counter** of the second "a", which is the enclosed hole in its lower bowl. In Geist Medium that "a" is made of exactly two outlines, and the inner one is 243 by 179 font units.
+The script also pulls out one special shape: the **counter** of the second "a", the enclosed hole in its lower bowl. In Geist Medium that "a" is made of exactly two outlines, and the inner one is 243 by 179 font units. That little shape is the whole trick.
 
 ## A background with a hole in it
 
-The overlay behind the letters is one big path drawn with `fill-rule="evenodd"`: a huge rectangle, plus the counter's outline as a second shape. Where the two overlap, the fill cancels out, which leaves a hole shaped exactly like the inside of the "a", and the real page shows through it.
+The overlay behind the letters is one big path drawn with `fill-rule="evenodd"`: a huge rectangle, plus the counter's outline as a second subpath. Where the two overlap, the fill cancels out. That leaves a hole shaped exactly like the inside of the "a", and the real page shows through it.
 
-So that the hole doesn't give the game away too early, a second copy of the counter sits on top in the background colour. It fades out as the zoom begins, and the site slowly appears through the letter.
+I didn't want the hole to give the game away too early, so a second copy of the counter sits on top in the background colour. It fades out as the zoom begins, and the site slowly appears through the letter.
 
 ## Scaling about a point
 
-To zoom *into* the counter, every point $p$ in the word gets scaled about the counter's centre $c$:
+To zoom *into* the counter, I scale every point $p$ in the word about the counter's centre $c$:
 
 $$
 T_s(p) = c + s\,(p - c)
 $$
 
-In SVG that's `translate(cx cy) scale(s) translate(-cx -cy)`, written to the group's `transform` attribute on every frame. Because that changes the geometry itself, the browser redraws crisp vector edges at any scale. A CSS transform can end up stretching a cached image instead, which goes blurry long before 100×.
+In SVG that's `translate(cx cy) scale(s) translate(-cx -cy)`, and I write it to the group's `transform` attribute on every frame. Because that changes the geometry itself, the browser redraws crisp vector edges at any scale. A CSS transform can end up scaling a cached bitmap instead, which goes blurry long before 100×.
 
 ## How far to zoom
 
-The zoom is done once the hole covers the whole screen, which is when all four corners of the viewport sit inside the counter. Every screen is different, so the page works out the target scale when it loads, with a binary search:
+The zoom is done once the hole covers the whole screen, which is exactly when all four corners of the viewport sit inside the counter. Every screen is different, so rather than hard-coding a number, I find the target scale when the page loads with a binary search:
 
 ```ts {4-6}
 function targetScale(counter: SVGPathElement, corners: DOMPoint[]) {
@@ -48,19 +48,19 @@ function targetScale(counter: SVGPathElement, corners: DOMPoint[]) {
 }
 ```
 
-`toLocal` undoes $T_s$ to map a screen corner back into the counter's own coordinates. On a 1440×900 laptop screen that comes out to about 83×, and on a 375×812 phone it's about 165×.
+`toLocal` inverts $T_s$ to map a screen corner back into the counter's own coordinates, and `isPointInFill` tells me whether that point lands inside the hole. On a 1440×900 laptop screen the answer comes out to about 83×, and on a 375×812 phone it's about 165×.
 
 ## Why log space
 
-The obvious approach is to animate $s$ straight from $1$ to $s_{\max}$. It looks wrong: almost all the visible movement happens in the first few frames, and the rest is a slow crawl. What your eye actually follows is the *relative* change in size, so the rate that feels steady is the rate of change of $\ln s$.
+My first instinct was to animate $s$ straight from $1$ to $s_{\max}$. It looks wrong: almost all the visible movement happens in the first few frames, and the rest is a slow crawl. What your eye actually follows is the *relative* change in size, so the rate that feels steady is the rate of change of $\ln s$.
 
-So instead, the intro animates the exponent:
+So instead, I animate the exponent:
 
 $$
 s(t) = s_{\max}^{\,e(t)}, \qquad \frac{d}{dt}\ln s(t) = e'(t)\,\ln s_{\max},
 $$
 
-where $e$ is an easing curve on $t \in [0, 1]$. With $e(t) = t$ the push-in feels like moving at a steady speed. I went with an ease-in, so the zoom starts gently and then picks up speed as it goes through the letter.[^expo]
+where $e$ is an easing curve on $t \in [0, 1]$. With $e(t) = t$, the push-in feels like moving at a steady speed. I went with a cubic ease-in, so the zoom starts gently and then picks up speed as it goes through the letter.[^expo]
 
 ## The small things
 
@@ -71,4 +71,4 @@ where $e$ is an easing curve on $t \in [0, 1]$. With $e(t) = t$ the push-in feel
 
 [^kerning]: Kerning nudges the spacing between specific pairs of letters. Without it, the "r" and "j" would sit noticeably too far apart.
 
-[^expo]: An exponential ease-in on top of the log-space interpolation would spend nearly the whole animation near $s = 1$, so a cubic ease-in works better here.
+[^expo]: An exponential ease-in on top of the log-space interpolation would spend nearly the whole animation near $s = 1$, which is why a cubic ease-in works better here.

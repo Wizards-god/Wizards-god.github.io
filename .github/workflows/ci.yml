@@ -1,0 +1,48 @@
+# Checks every push and pull request: type check, build, link check, and an
+# informational Lighthouse report. Hosting is on Vercel, which builds and
+# deploys main on its own, so this workflow never deploys anything.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx astro check
+
+      - name: Build
+        run: npm run build
+
+      - name: Check links (fails on broken internal links or a missing resume.pdf)
+        run: npm run check:links
+
+      # Informational: reports scores against lighthouserc.json but never fails
+      # the run (CI machines make performance scores noisy).
+      - name: Lighthouse
+        continue-on-error: true
+        uses: treosh/lighthouse-ci-action@12.6.2
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
