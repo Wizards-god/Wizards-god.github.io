@@ -1,7 +1,7 @@
 // Header: shrink on scroll, hide on scroll down, sliding active-page indicator,
 // section tracking on the home page, and the mobile drawer.
 
-import { html } from './motion';
+import { html, dur, EASE, prefersReducedMotion } from './motion';
 
 const header = () => document.querySelector<HTMLElement>('[data-header]');
 
@@ -53,38 +53,36 @@ function keyForPath(path: string): string | null {
   return ['about', 'projects', 'writing', 'coursework'].includes(seg) ? seg : null;
 }
 
-let currentKey: string | null = null;
+let currentKey: string | null | undefined;
 
 /**
- * Put the accent underline exactly under the active link's text. Measured
- * from the label's box (not the padded link), so padding never widens it.
+ * Mark the active nav link. Every label carries its own underline, sized and
+ * placed by CSS from the text itself, so it lines up at any window size, zoom
+ * or font. When the active link changes, the new underline animates in from
+ * where the old one was (FLIP), which keeps the sliding effect without any
+ * measuring for the resting state.
  */
-function moveIndicator(key: string | null, instant = false) {
+function setActive(key: string | null, animate = true) {
+  if (key === currentKey) return;
   const nav = document.querySelector<HTMLElement>('[data-site-nav]');
-  const bar = nav?.querySelector<HTMLElement>('.site-nav__indicator');
-  if (!nav || !bar) return;
+  if (!nav) return;
+  const lineOf = (k: string | null | undefined) =>
+    k ? nav.querySelector<HTMLElement>(`[data-nav-key="${k}"] .site-nav__line`) : null;
+
+  const from = lineOf(currentKey);
+  const fromRect = from ? from.getBoundingClientRect() : null;
+  nav.querySelectorAll<HTMLElement>('[data-nav-key]').forEach((a) => a.classList.toggle('is-active', a.dataset.navKey === key));
   currentKey = key;
-  const link = key ? nav.querySelector<HTMLElement>(`[data-nav-key="${key}"]`) : null;
-  nav.querySelectorAll('[data-nav-key]').forEach((a) => a.classList.toggle('is-active', a === link));
-  const label = link?.querySelector<HTMLElement>('.site-nav__label') ?? link;
-  if (!label || label.offsetWidth === 0) {
-    bar.style.opacity = '0';
-    return;
-  }
-  // Layout offsets (not getBoundingClientRect) so the nav items' entrance
-  // transform can't skew the measurement. The nav is the offsetParent.
-  let x = 0;
-  let y = 0;
-  for (let n: HTMLElement | null = label; n && n !== nav; n = n.offsetParent as HTMLElement | null) {
-    x += n.offsetLeft;
-    y += n.offsetTop;
-  }
-  y += label.offsetHeight + 3;
-  const w = label.offsetWidth;
-  if (instant) bar.classList.add('no-anim');
-  bar.style.opacity = '1';
-  bar.style.transform = `translate(${x}px, ${y}px) scaleX(${w})`;
-  if (instant) requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.remove('no-anim')));
+
+  const to = lineOf(key);
+  if (!to || !animate || prefersReducedMotion()) return;
+  const toRect = to.getBoundingClientRect();
+  if (!toRect.width) return;
+  const first =
+    fromRect && fromRect.width
+      ? `translateX(${fromRect.left - toRect.left}px) scaleX(${fromRect.width / toRect.width})`
+      : 'scaleX(0)';
+  to.animate([{ transform: first }, { transform: 'none' }], { duration: dur(320), easing: EASE.ui });
 }
 
 function setCurrentPage() {
@@ -108,7 +106,7 @@ function trackHomeSections() {
     (entries) => {
       entries.forEach((e) => visible.set(e.target, e.isIntersecting));
       const active = sections.find((s) => visible.get(s));
-      moveIndicator(active?.dataset.navSection ?? null);
+      setActive(active?.dataset.navSection ?? null);
     },
     { rootMargin: '-45% 0px -50% 0px' },
   );
@@ -116,27 +114,12 @@ function trackHomeSections() {
 }
 
 function initIndicator() {
-  const onPage = (instant: boolean) => {
-    const key = setCurrentPage();
-    moveIndicator(key, instant);
-    trackHomeSections();
-  };
   let first = true;
   document.addEventListener('page:init', () => {
-    onPage(first);
+    setActive(setCurrentPage(), !first);
     first = false;
+    trackHomeSections();
   });
-  // Re-measure whenever the labels change size: window resizes, and the web
-  // font swapping in after the first measurement (which shifts every label).
-  const nav = document.querySelector<HTMLElement>('[data-site-nav]');
-  if (nav && 'ResizeObserver' in window) {
-    const ro = new ResizeObserver(() => moveIndicator(currentKey, true));
-    ro.observe(nav);
-    nav.querySelectorAll('.site-nav__label').forEach((l) => ro.observe(l));
-  }
-  addEventListener('resize', () => moveIndicator(currentKey, true), { passive: true });
-  document.fonts?.addEventListener?.('loadingdone', () => moveIndicator(currentKey, true));
-  document.fonts?.ready.then(() => moveIndicator(currentKey, true));
 }
 
 // ------------------------------------------------------------ mobile drawer

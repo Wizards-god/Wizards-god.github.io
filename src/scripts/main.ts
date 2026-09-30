@@ -11,6 +11,7 @@ import { initTabs } from './tabs';
 import { initInteractions } from './interactions';
 import { initFilters } from './filters';
 import { initAsk } from './ask';
+import { initAsciiChart } from './ascii-chart';
 
 declare global {
   interface Window {
@@ -30,6 +31,7 @@ initAsk();
 document.addEventListener('page:init', () => {
   initTabs();
   initFilters();
+  initAsciiChart();
 });
 document.addEventListener('page:revealed', () => startReveal());
 

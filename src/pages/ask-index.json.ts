@@ -48,7 +48,7 @@ export async function GET() {
       title: 'Education',
       url: '/about',
       answer: `A Bachelor of Science in Computer Science at the ${uiuc.title} (${uiuc.start.slice(0, 4)}–${uiuc.end?.slice(0, 4)}), with an intended Math minor.`,
-      keywords: ['study', 'studying', 'major', 'minor', 'degree', 'university', 'college', 'school', 'uiuc', 'illinois', 'education', 'class', 'year', 'graduate', 'student'],
+      keywords: ['study', 'studying', 'major', 'minor', 'degree', 'university', 'college', 'school', 'uiuc', 'illinois', 'education', 'class', 'year', 'graduate', 'student', 'rv', 'pu', 'jee'],
       text: `${bio.long.join(' ')} ${uiuc.note ?? ''}`,
     },
     {
@@ -135,7 +135,7 @@ export async function GET() {
             title: 'Interests & languages',
             url: '/about',
             answer: `Interests: ${interests.items.join(', ')}. Languages: ${languages.items.join(', ')}.`,
-            keywords: ['interests', 'hobbies', 'languages', 'speak', 'telugu', 'kannada', 'hindi'],
+            keywords: ['interests', 'hobbies', 'languages', 'speak', 'telugu', 'kannada', 'hindi', 'sanskrit'],
             text: [...interests.items, ...languages.items].join(' '),
           },
         ]

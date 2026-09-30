@@ -9,36 +9,43 @@ interface Props {
 const { groups, headingLevel: H = 'h2' } = Astro.props;
 ---
 
-<div class="courses">
+<div class="courses" id="course-list">
   {
-    groups.map((g) => (
-      <section class="term" data-reveal aria-label={g.term}>
-        <H class="term__title">{g.term}</H>
-        <ul class="term__list">
-          {g.courses.map((c) => (
-            <li class="course">
-              <span class="course__code">{c.data.code}</span>
-              <span class="course__title">
-                {c.data.title}
-                {c.data.notesPdf && (
-                  <a href={c.data.notesPdf} class="course__notes link link--quiet">
-                    notes<span class="ext" aria-hidden="true">↗</span>
-                  </a>
-                )}
-              </span>
-              <span class="course__status">
-                <PlaceholderTag show={c.data.placeholder} />
-                <span class="status-chip" data-status={c.data.status}>
-                  {c.data.status}
+    groups.map((g) => {
+      const genEdOnly = g.courses.every((c) => c.data.category !== 'stem');
+      return (
+        <section class="term" data-reveal aria-label={g.term} data-gened-only={genEdOnly ? "" : undefined} hidden={genEdOnly}>
+          <H class="term__title">{g.term}</H>
+          <ul class="term__list">
+            {g.courses.map((c) => (
+              <li class="course" data-category={c.data.category} hidden={c.data.category !== 'stem'}>
+                <span class="course__code">{c.data.code}</span>
+                <span class="course__title">
+                  {c.data.title}
+                  {c.data.notesPdf && (
+                    <a href={c.data.notesPdf} class="course__notes link link--quiet">
+                      notes<span class="ext" aria-hidden="true">↗</span>
+                    </a>
+                  )}
                 </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))
+                <span class="course__status">
+                  {c.data.credits && <span class="course__credits">{c.data.credits} cr</span>}
+                  {c.data.category === 'gen-ed' && <span class="course__kind">gen ed</span>}
+                  <PlaceholderTag show={c.data.placeholder} />
+                  <span class="status-chip" data-status={c.data.status}>
+                    {c.data.status}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    })
   }
 </div>
+
+<noscript><style>.courses [hidden] { display: revert !important; }</style></noscript>
 
 <style>
   .courses {
@@ -89,11 +96,23 @@ const { groups, headingLevel: H = 'h2' } = Astro.props;
     font-size: 12px;
   }
 
+  .course__credits,
+  .course__kind {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
   .course__status {
     grid-column: 2;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    align-items: center;
+    gap: 6px 10px;
     justify-self: start;
   }
 

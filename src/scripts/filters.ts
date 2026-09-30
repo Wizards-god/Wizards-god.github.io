@@ -139,6 +139,36 @@ function setupFilter(root: HTMLElement) {
   apply(false);
 }
 
+/** Coursework: STEM courses by default; a toggle reveals gen eds. */
+function setupGenEdToggle(btn: HTMLButtonElement) {
+  const list = document.getElementById(btn.getAttribute('aria-controls') ?? '');
+  const label = btn.querySelector<HTMLElement>('[data-gened-label]');
+  const status = document.querySelector<HTMLElement>('[data-gened-status]');
+  if (!list) return;
+  const rows = [...list.querySelectorAll<HTMLElement>('[data-category="gen-ed"]')];
+  const genEdTerms = [...list.querySelectorAll<HTMLElement>('[data-gened-only]')];
+  let shown = false;
+
+  btn.addEventListener(
+    'click',
+    () => {
+      shown = !shown;
+      animateHeight(list, () => {
+        rows.forEach((r) => (r.hidden = !shown));
+        genEdTerms.forEach((t) => (t.hidden = !shown));
+      });
+      revealWithin(list);
+      if (shown) staggerIn(rows);
+      btn.setAttribute('aria-pressed', String(shown));
+      if (label) label.textContent = shown ? 'Hide gen eds' : `Show gen eds (${rows.length})`;
+      if (status) status.textContent = shown ? `Showing ${rows.length} gen ed courses` : 'Showing STEM courses only';
+    },
+    { signal: pageSignal() },
+  );
+  btn.dataset.enhanced = '';
+}
+
 export function initFilters() {
   document.querySelectorAll<HTMLElement>('[data-filter-root]:not(.is-enhanced)').forEach(setupFilter);
+  document.querySelectorAll<HTMLButtonElement>('[data-gened-toggle]:not([data-enhanced])').forEach(setupGenEdToggle);
 }

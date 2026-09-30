@@ -1,5 +1,6 @@
-// Build-time ASCII line chart of a seeded random walk (box-drawing
-// characters, in the style of asciichart). A new walk is drawn on every build.
+// ASCII line chart of a seeded random walk (box-drawing characters, in the
+// style of asciichart). Shared by the build (first paint) and the browser,
+// which re-seeds with the time in India and keeps the walk moving.
 
 function mulberry32(seed: number) {
   return () => {
@@ -17,16 +18,29 @@ function hash(s: string) {
   return h >>> 0;
 }
 
-export function randomWalk(seed: string, n: number, start = 100, vol = 0.9) {
+export const CHART = { points: 34, rows: 7, start: 100, vol: 0.9, drift: 0.03 } as const;
+
+/** A seeded random walk that can keep stepping: step() returns the next value. */
+export function walker(seed: string, start: number = CHART.start) {
   const rand = mulberry32(hash(seed));
-  const out: number[] = [start];
-  for (let i = 1; i < n; i++) {
-    const u = 1 - rand();
-    const v = rand();
-    const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-    out.push(out[i - 1] + z * vol + 0.03);
-  }
-  return out;
+  let value = start;
+  return {
+    step() {
+      const u = 1 - rand();
+      const v = rand();
+      const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      value += z * CHART.vol + CHART.drift;
+      return value;
+    },
+  };
+}
+
+/** The first `n` points of the walk for `seed`. */
+export function randomWalk(seed: string, n: number = CHART.points) {
+  const w = walker(seed);
+  const out = [CHART.start as number];
+  for (let i = 1; i < n; i++) out.push(w.step());
+  return { series: out, walker: w };
 }
 
 export interface ChartRow {
@@ -37,7 +51,7 @@ export interface ChartRow {
 }
 
 /** Plot `series` into `height` rows. Returns rows top to bottom. */
-export function plot(series: number[], height: number): ChartRow[] {
+export function plot(series: number[], height: number = CHART.rows): ChartRow[] {
   const min = Math.min(...series);
   const max = Math.max(...series);
   const range = max - min || 1;
@@ -66,4 +80,23 @@ export function plot(series: number[], height: number): ChartRow[] {
     const label = r % 2 === 0 ? value.toFixed(1).padStart(labelW) : ' '.repeat(labelW);
     return { label, cells: cells.join(''), last: r === lastRow };
   });
+}
+
+/** "30 Sep 14:05:32" in India Standard Time. */
+export function istStamp(d = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(d)
+      .map((p) => [p.type, p.value]),
+  );
+  const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(parts.month) - 1];
+  return `${parts.day} ${month} ${parts.hour}:${parts.minute}:${parts.second}`;
 }

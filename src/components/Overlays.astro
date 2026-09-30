@@ -4,7 +4,9 @@
 import { site } from '../data/site';
 ---
 
-<div class="glow" data-glow data-reduced={site.glow.reducedMotion} aria-hidden="true" transition:persist="glow"></div>
+<div class="glow-layer" aria-hidden="true" transition:persist="glow">
+  <div class="glow" data-glow data-reduced={site.glow.reducedMotion}></div>
+</div>
 
 <div class="theme-curtain" data-theme-curtain aria-hidden="true" transition:persist="theme-curtain"></div>
 
@@ -19,11 +21,26 @@ import { site } from '../data/site';
 
 <style>
   /* ---- cursor glow (above the page background, below content) ---- */
-  .glow {
+  /* Full-viewport layer whose mask fades the glow out as it nears the header,
+     instead of the header's backdrop cutting it off in a hard line. */
+  .glow-layer {
     position: fixed;
+    inset: 0;
+    z-index: var(--z-glow);
+    overflow: hidden;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent calc(var(--header-h) - 16px),
+      #000 calc(var(--header-h) + 190px)
+    );
+    mask-image: linear-gradient(to bottom, transparent calc(var(--header-h) - 16px), #000 calc(var(--header-h) + 190px));
+  }
+
+  .glow {
+    position: absolute;
     top: 0;
     left: 0;
-    z-index: var(--z-glow);
     width: 450px;
     height: 450px;
     border-radius: 50%;

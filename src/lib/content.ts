@@ -34,7 +34,13 @@ export async function getCoursesByTerm() {
   }
   return [...groups.entries()]
     .sort(([a], [b]) => termKey(b) - termKey(a))
-    .map(([term, courses]) => ({ term, courses: courses.sort((a, b) => a.data.code.localeCompare(b.data.code)) }));
+    .map(([term, courses]) => ({
+      term,
+      // STEM before gen eds, then by course code.
+      courses: courses.sort(
+        (a, b) => Number(a.data.category !== 'stem') - Number(b.data.category !== 'stem') || a.data.code.localeCompare(b.data.code),
+      ),
+    }));
 }
 
 export async function getAwards() {

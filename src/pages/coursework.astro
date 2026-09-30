@@ -4,6 +4,7 @@ import CourseList from '../components/CourseList.astro';
 import { getCoursesByTerm } from '../lib/content';
 
 const groups = await getCoursesByTerm();
+const genEds = groups.flatMap((g) => g.courses).filter((c) => c.data.category === 'gen-ed').length;
 ---
 
 <BaseLayout
@@ -16,19 +17,32 @@ const groups = await getCoursesByTerm();
       <p class="eyebrow" data-enter style="--i: 0">coursework</p>
       <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Coursework</h1>
       <p class="lede" data-enter style="--i: 2">
-        Courses at the University of Illinois Urbana-Champaign, newest semester first. Where I've written notes,
-        they're linked as PDFs.
+        My courses at the University of Illinois Urbana-Champaign, newest semester first. Where I have notes, they're
+        here as PDFs. Some of them I converted to LaTeX with the help of AI, and a few are still incomplete.
       </p>
     </header>
-    <div class="list" data-enter style="--i: 3">
+
+    {
+      genEds > 0 && (
+        <p class="controls js-only" data-enter style="--i: 3">
+          <button type="button" class="chip" data-gened-toggle aria-pressed="false" aria-controls="course-list">
+            <span data-gened-label>Show gen eds ({genEds})</span>
+          </button>
+          <span class="controls__hint">STEM courses are shown by default.</span>
+        </p>
+      )
+    }
+
+    <div class="list" data-enter style="--i: 4">
       <CourseList groups={groups} />
     </div>
+    <p class="visually-hidden" aria-live="polite" data-gened-status></p>
   </div>
 </BaseLayout>
 
 <style>
   .head {
-    margin-bottom: 48px;
+    margin-bottom: 40px;
   }
 
   .head .lede {
@@ -37,5 +51,56 @@ const groups = await getCoursesByTerm();
 
   .list {
     max-width: 820px;
+  }
+
+  :global(html:not(.js)) .js-only {
+    display: none;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    margin-bottom: 28px;
+  }
+
+  .controls__hint {
+    color: var(--faint);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .chip {
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    transition:
+      background-color var(--dur-ui) var(--ease-ui),
+      border-color var(--dur-ui) var(--ease-ui),
+      color var(--dur-ui) var(--ease-ui);
+  }
+
+  .chip[aria-pressed='true'] {
+    border-color: var(--faint);
+    color: var(--text);
+    background: var(--accent-tint);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .chip:hover {
+      color: var(--text);
+      border-color: var(--faint);
+    }
+  }
+
+  .chip:active {
+    transform: scale(0.97);
   }
 </style>

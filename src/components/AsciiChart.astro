@@ -1,23 +1,27 @@
 ---
-// Decorative ASCII price chart: a seeded random walk, regenerated at each build.
+// Decorative ASCII price chart: a random walk. The build draws a first frame
+// (so it shows without JavaScript); in the browser, scripts/ascii-chart.ts
+// re-seeds it with the current time in India and steps it every few seconds.
 import { randomWalk, plot } from '../lib/ascii-chart';
 import { buildDate } from '../lib/build-info';
 import { isoDate } from '../lib/format';
 
 const seed = isoDate(buildDate);
-const series = randomWalk(seed, 34);
-const rows = plot(series, 7);
+const { series } = randomWalk(seed);
+const rows = plot(series);
 const last = series[series.length - 1];
 const change = ((last - series[0]) / series[0]) * 100;
+const pad = ' '.repeat(rows[0].label.length + 2);
 ---
 
-<figure class="ascii" data-enter style="--i: 6">
-  <pre class="ascii__pre" aria-hidden="true"><span class="ascii__head">PRJ · random walk · seed {seed}</span>
+<figure class="ascii" data-enter style="--i: 6" data-ascii>
+  <pre class="ascii__pre" aria-hidden="true" data-ascii-pre><span class="ascii__head">PRJ · random walk · seed {seed}</span>
 {rows.map((r) => (
   <>{r.label} {r.label.trim() ? '┤' : '│'}{r.cells}{r.last && <span class="ascii__last"> {last.toFixed(2)}</span>}{'\n'}</>
-))}<span class="ascii__head">{' '.repeat(rows[0].label.length + 2)}{change >= 0 ? '+' : ''}{change.toFixed(2)}% since open</span></pre>
+))}<span class="ascii__head">{pad}{change >= 0 ? '+' : ''}{change.toFixed(2)}% since open</span></pre>
   <figcaption class="visually-hidden">
-    Decorative chart: a made-up price following a random walk, redrawn every time the site is built. Last value {last.toFixed(2)}.
+    Decorative chart: a made-up price following a random walk, seeded from the time in India and updated every few
+    seconds.
   </figcaption>
 </figure>
 
@@ -39,11 +43,11 @@ const change = ((last - series[0]) / series[0]) * 100;
     font-variant-ligatures: none;
   }
 
-  .ascii__head {
+  .ascii__pre :global(.ascii__head) {
     color: var(--faint);
   }
 
-  .ascii__last {
+  .ascii__pre :global(.ascii__last) {
     color: var(--accent);
   }
 </style>

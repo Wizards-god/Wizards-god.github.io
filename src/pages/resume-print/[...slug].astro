@@ -18,7 +18,7 @@ const show = (p?: boolean) => site.showPlaceholders || !p;
 const jobs = await getExperience();
 const projects = (await getProjects()).slice(0, 4);
 const awards = await getAwards();
-const courses = (await getCoursesByTerm()).flatMap((g) => g.courses).filter((c) => c.data.status !== 'upcoming');
+const courses = (await getCoursesByTerm()).flatMap((g) => g.courses).filter((c) => c.data.status !== 'intended' && c.data.category === 'stem');
 const uiuc = education[0];
 ---
 

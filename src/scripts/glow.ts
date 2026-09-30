@@ -1,10 +1,24 @@
-// Cursor glow: a large, faint radial gradient that eases toward the pointer.
-// Compositor-only (translate3d), and the rAF loop stops once it settles.
+// Cursor glow: a soft radial gradient that trails the pointer.
+//
+// Movement uses a critically damped spring (the "SmoothDamp" formulation), so
+// it glides after the cursor without overshooting, and it is timed in seconds
+// rather than per frame, so it feels the same at 60 Hz and 144 Hz. The loop is
+// compositor-only (translate3d) and stops once the glow has settled.
 
-import { prefersReducedMotion, dur } from './motion';
+import { prefersReducedMotion, slow, dur } from './motion';
 
 const SIZE = 450; // keep in sync with .glow in components/Overlays.astro
-const LERP = 0.15;
+const SMOOTH_TIME = 0.24; // seconds; larger = lazier follow
+
+/** One axis of a critically damped spring. Returns [position, velocity]. */
+function smoothDamp(current: number, target: number, velocity: number, dt: number): [number, number] {
+  const omega = 2 / SMOOTH_TIME;
+  const x = omega * dt;
+  const decay = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  const change = current - target;
+  const temp = (velocity + omega * change) * dt;
+  return [target + (change + temp) * decay, (velocity - omega * temp) * decay];
+}
 
 export function initGlow() {
   const el = document.querySelector<HTMLElement>('[data-glow]');
@@ -13,11 +27,14 @@ export function initGlow() {
   const half = SIZE / 2;
   let x = innerWidth / 2;
   let y = innerHeight / 2;
+  let vx = 0;
+  let vy = 0;
   let tx = x;
   let ty = y;
   let running = false;
   let visible = false;
   let touchActive = false;
+  let lastTime = 0;
 
   const disabled = () => prefersReducedMotion() && el.dataset.reduced === 'off';
 
@@ -25,25 +42,36 @@ export function initGlow() {
     el.style.transform = `translate3d(${(x - half).toFixed(1)}px, ${(y - half).toFixed(1)}px, 0)`;
   };
 
-  const loop = () => {
-    const k = prefersReducedMotion() ? 1 : LERP;
-    x += (tx - x) * k;
-    y += (ty - y) * k;
-    if (Math.abs(tx - x) < 0.1 && Math.abs(ty - y) < 0.1) {
+  const loop = (now: number) => {
+    // Clamp dt so a stalled tab doesn't make the glow jump; ?slow= stretches time.
+    const dt = Math.min(0.05, lastTime ? (now - lastTime) / 1000 : 1 / 60) / slow();
+    lastTime = now;
+    if (prefersReducedMotion()) {
       x = tx;
       y = ty;
+      vx = vy = 0;
+    } else {
+      [x, vx] = smoothDamp(x, tx, vx, dt);
+      [y, vy] = smoothDamp(y, ty, vy, dt);
+    }
+    place();
+    const settled = Math.abs(tx - x) < 0.1 && Math.abs(ty - y) < 0.1 && Math.abs(vx) < 1 && Math.abs(vy) < 1;
+    if (settled) {
+      x = tx;
+      y = ty;
+      vx = vy = 0;
       place();
       running = false;
       el.style.willChange = '';
       return;
     }
-    place();
     requestAnimationFrame(loop);
   };
 
   const kick = () => {
     if (running) return;
     running = true;
+    lastTime = 0;
     el.style.willChange = 'transform';
     requestAnimationFrame(loop);
   };
@@ -63,6 +91,7 @@ export function initGlow() {
   const jumpTo = (px: number, py: number) => {
     x = tx = px;
     y = ty = py;
+    vx = vy = 0;
     place();
   };
 

@@ -545,6 +545,10 @@
   border-color: var(--faint);
 }
 
+.status-chip[data-status='intended'] {
+  border-style: dashed;
+}
+
 .icon {
   width: 20px;
   height: 20px;

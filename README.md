@@ -26,7 +26,7 @@ Everything you'd normally change lives in two places:
 | Bio, education timeline, "currently", interests, languages, skills | `src/data/about.ts` |
 | Projects (case studies) | `src/content/projects/*.mdx` |
 | Experience (home-page tabs, resume) | `src/content/experience/*.md` |
-| Courses | `src/content/courses/courses.yaml` |
+| Courses (`status`: completed, in progress or intended; `category`: stem, or gen-ed to sit behind the gen-ed toggle) | `src/content/courses/courses.yaml` |
 | Awards | `src/content/awards/*.md` |
 | Books | `src/content/books/*.md` |
 | Posts | `src/content/writing/*.mdx` |

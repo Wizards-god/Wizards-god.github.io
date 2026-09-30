@@ -1,6 +1,6 @@
 ---
 title: parjanya.me
-summary: This site. A static, multi-page personal site with a typed-in intro, shutter page transitions and a curtain theme switch.
+summary: The site you're on. A small static site for my projects, coursework and writing, with a few animations along the way.
 date: 2026-09-29
 status: in-progress
 featured: true
@@ -13,38 +13,29 @@ links:
 cover: ../../assets/projects/parjanya-me-cover.png
 coverAlt: The home page of parjanya.me in dark mode, showing the name, a short bio and a small ASCII price chart.
 thumb: ../../assets/projects/parjanya-me-thumb.png
-metrics:
-  - { label: "Lighthouse, desktop", value: "100 / 100 / 100 / 100" }
-  - { label: "All JavaScript, gzipped", value: "17 KB" }
-  - { label: "Intro zoom", value: "83× – 165×" }
-  - { label: "Layout shift (CLS)", value: "0" }
+metrics: []
 ---
 
 import Pipeline from '../../components/Pipeline.astro';
 
 ## Problem
 
-I wanted one place for projects, coursework and writing that stays honest and current. Plenty of student portfolios look sharp on launch day and then freeze: dates stuck on "Present", a resume link that 404s. The site had to be cheap to keep up to date, so it needed to be static, free to host and driven by plain content files.
+I wanted one place for my projects, coursework and writing that would be easy to keep up to date. That pointed to something simple: plain static pages, free hosting, and content kept in ordinary files.
 
-It also needed some personality without gimmicks: a charcoal palette with one muted accent, a neat typeface, and motion that feels deliberate rather than decorative.
+I also wanted it to feel a little like me, so it has a charcoal palette, one warm accent colour, and a few small animations.
 
 ## Approach
 
-- **Static first.** Astro renders every page to HTML at build time. JavaScript ships only for the interactive parts (theme, glow, transitions, tabs, filters), and the intro's code loads only on the visits where it actually plays.
-- **Content as data.** Projects, experience, courses, awards, books and posts are content collections with Zod schemas. A featured project without a cover image fails the build, and a status line older than 90 days prints a warning.
-- **Intro without a web font.** A build script uses `opentype.js` to turn "parjanya." into SVG outlines, including the inner contour (the counter) of the second "a". The intro therefore paints on the very first frame.
-- **Transitions with a real router.** Astro's client router swaps pages without a full reload, so a pair of shutter panels can close while the next page is fetched and open once it has painted.
+- **Mostly static.** Astro turns every page into plain HTML when the site is built. JavaScript only handles the interactive bits (the theme switch, page transitions, tabs and filters), and the intro's code only loads on the visit where it plays.
+- **Content in files.** Projects, courses, books and posts are Markdown or YAML files with a schema, so a missing field shows up as a build error instead of a broken page.
+- **The intro.** A small build script turns the letters of "parjanya." into SVG shapes, so the intro can show up before any fonts have loaded.
+- **Page transitions.** Astro's client-side router swaps pages without a full reload, which leaves room for the shutter animation in between.
 
 ## Results
 
-Measured on the production build with `?intro=0`, as the spec asks, so the intro doesn't skew the numbers:
-
-- Lighthouse scores **100** for performance, accessibility, best practices and SEO on desktop (home, projects and a post), and **98–100** on the mobile profile. Cumulative layout shift is **0**.
-- The whole site ships about **17 KB** of gzipped JavaScript; the intro's 3 KB loads only on the visit where it plays.
-- The zoom target works out to **83×** on a 1440×900 laptop screen and **165×** on a 375×812 phone.
-- The intro zooms through the counter of the "a" crisply at 100× and beyond, because the scale is applied as an SVG `transform` attribute (re-rendered as vectors every frame) rather than as a CSS transform on a bitmap.
-- Every page works without JavaScript. Theme, transitions and reveals are layered on top.
-- Motion respects `prefers-reduced-motion`: the intro becomes a short fade, the shutter a crossfade, and scroll reveals are off.
+- It stays light: about 17 KB of compressed JavaScript for the whole site, and it does well in Lighthouse on both desktop and mobile.
+- Everything still works with JavaScript turned off. The animations are layered on top.
+- If your system asks for reduced motion, the intro becomes a short fade and page changes become a simple crossfade.
 
 ## Pipeline
 
@@ -60,16 +51,17 @@ Measured on the production build with `?intro=0`, as the spec asks, so the intro
 
 ## Challenges
 
-- **Choreographing navigation.** Closing the shutter and fetching the next page run in parallel, so a fast connection never waits for the animation and a slow one never shows a half-open page.
-- **Finding the zoom target.** The intro binary-searches for the smallest scale at which all four corners of the viewport sit inside the letter's counter, using `isPointInFill`. That comes out at 83× on a laptop and 165× on a phone.
-- **No flash of the wrong theme.** A tiny inline script sets the theme before first paint and re-applies it after every client-side page swap.
+- **Timing the page transitions.** Getting the shutter to close while the next page loads, and to open only once that page is ready, took a few tries.
+- **The zoom.** Working out how far to zoom so the whole screen ends up inside the letter took a bit of geometry. There's a separate [write-up](/writing/zooming-through-a-letter) on that.
+- **Theme flashes.** Stopping the page from briefly flashing the wrong theme on load needed a tiny script that runs before anything is drawn.
 
 ## Limitations
 
-- The intro relies on SVG hit-testing (`isPointInFill`). Browsers without it fall back to a zoom estimated from the counter's bounding box, which overshoots slightly.
-- The "ask" box is a keyword search over the site's own content, not a language model, and it says so.
+- Browsers without SVG hit-testing get a rougher estimate for how far to zoom.
+- The "ask" box is a keyword search over this site, not an AI, and it says so.
+- Some of the content is still placeholder while I fill things in.
 
 ## What's next
 
-- Fill in the rest as it happens: more projects, coursework and experience.
-- Add course notes as PDFs, and project write-ups as they happen.
+- Add projects, coursework and experience as they happen.
+- Put course notes up as PDFs.

@@ -23,13 +23,14 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
                 data-nav-key={item.key}
                 aria-current={seg === item.key ? 'page' : undefined}
               >
-                <span class="site-nav__label">{item.label}</span>
+                <span class="site-nav__label">
+                  {item.label}<span class="site-nav__line" aria-hidden="true" />
+                </span>
               </a>
             </li>
           ))
         }
       </ul>
-      <span class="site-nav__indicator" aria-hidden="true"></span>
     </nav>
 
     <div class="site-header__actions">
@@ -185,25 +186,28 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
     }
   }
 
-  /* One 1px-wide bar, moved and stretched with a transform to sit exactly
-     under the active label's text (not the padded link box). */
-  .site-nav__indicator {
+  /* The underline belongs to the label itself, so it always spans exactly
+     the word. JS only toggles .is-active and animates the slide (header.ts). */
+  .site-nav__label {
+    position: relative;
+    display: inline-block;
+  }
+
+  .site-nav__line {
     position: absolute;
     left: 0;
-    top: 0;
-    width: 1px;
+    right: 0;
+    bottom: -3px;
     height: 1px;
     background: var(--accent);
     transform-origin: 0 50%;
     opacity: 0;
     pointer-events: none;
-    transition:
-      transform calc(250ms * var(--slow)) var(--ease-ui) calc(100ms * var(--slow)),
-      opacity var(--dur-ui) var(--ease-ui);
   }
 
-  .site-nav__indicator:global(.no-anim) {
-    transition: none;
+  .site-nav__link:global(.is-active) .site-nav__line,
+  :global(html:not(.js)) .site-nav__link[aria-current='page'] .site-nav__line {
+    opacity: 1;
   }
 
   /* ---- actions ---- */
@@ -286,8 +290,7 @@ const seg = Astro.url.pathname.split('/').filter(Boolean)[0] ?? '';
   @media (prefers-reduced-motion: reduce) {
     .site-header__bg,
     .site-header__inner,
-    .hamburger__line,
-    .site-nav__indicator {
+    .hamburger__line {
       transition: none;
     }
   }

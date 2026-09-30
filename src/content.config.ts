@@ -59,7 +59,10 @@ const courses = defineCollection({
     code: z.string(),
     title: z.string(),
     term: z.string().regex(/^(Spring|Summer|Fall|Winter) \d{4}$/, 'term must look like "Fall 2026"'),
-    status: z.enum(['completed', 'in progress', 'upcoming']),
+    status: z.enum(['completed', 'in progress', 'intended']),
+    credits: z.number().optional(),
+    // STEM courses show by default; gen eds sit behind a toggle on /coursework.
+    category: z.enum(['stem', 'gen-ed']).default('stem'),
     notesPdf: z.string().optional(),
     placeholder,
   }),

@@ -25,7 +25,7 @@ export const bio = {
   long: [
     "I'm Parjanya. I'm studying for a Bachelor of Science in Computer Science in the Siebel School of Computing and Data Science at the University of Illinois Urbana-Champaign, with an intended Math minor. I started in August 2026 and expect to graduate in May 2030.",
     "The goal is quantitative research. That means getting genuinely good at probability and statistics, at algorithms and systems, and at the unglamorous habit of checking my own work. This site is where I keep the evidence: projects with honest write-ups, notes from courses, and the occasional longer post.",
-    "The site itself is custom rather than a template: the intro, the page transitions and the theme switch are all bespoke, and there is a write-up of how the intro works if you are curious.",
+    "This site isn't built from a template, which made it a good excuse to learn how all the pieces fit together. If you're curious how the intro works, there's a short write-up about it.",
   ],
 };
 
@@ -38,11 +38,11 @@ export const education: TimelineItem[] = [
     note: 'Siebel School of Computing and Data Science.',
   },
   {
-    title: 'High school',
-    subtitle: 'More on this soon',
-    start: '2022-06',
+    title: 'RV PU College',
+    subtitle: 'Pre-university: Physics, Chemistry, Mathematics and Computer Science',
+    start: '2024-06',
     end: '2026-05',
-    placeholder: true,
+    note: 'Maths, physics and chemistry at JEE Advanced level, alongside computer science.',
   },
 ];
 
@@ -62,8 +62,8 @@ export const interests = {
 };
 
 export const languages = {
-  items: ['English', 'Telugu', 'Kannada', 'Hindi'],
-  placeholder: true,
+  items: ['English', 'Telugu', 'Kannada', 'Hindi', 'Sanskrit'],
+  placeholder: false,
 };
 
 export const skills = {
