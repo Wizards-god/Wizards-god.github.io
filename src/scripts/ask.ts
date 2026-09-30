@@ -1,94 +1,20 @@
 // "Ask" box: answers questions about the site from a JSON index generated at
-// build time (/ask-index.json). Keyword + synonym scoring; no AI, no server.
+// build time (/ask-index.json). The search is in src/lib/ask-search.ts; there
+// is no AI and no server, and nothing typed here leaves the browser.
 
 import { html, animate, dur, EASE, prefersReducedMotion } from './motion';
+import { createSearcher, type AskHit, type AskIndex, type Searcher } from '../lib/ask-search';
 
-interface Doc {
-  id: string;
-  title: string;
-  url: string;
-  answer: string;
-  keywords: string[];
-  text: string;
-}
-interface Index {
-  docs: Doc[];
-  synonyms: Record<string, string[]>;
-  fallback: string;
-}
-
-const STOP = new Set(
-  'a an and are as at be by can did do does for from has have how i in is it its me my of on or so tell that the their there this to was what when where which who why will with you your yours about any'.split(
-    ' ',
-  ),
-);
-
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^\p{L}\p{N}+#.\s-]/gu, ' ');
-
-function stem(w: string) {
-  if (w.length > 5 && w.endsWith('ing')) return w.slice(0, -3);
-  if (w.length > 4 && w.endsWith('ies')) return w.slice(0, -3) + 'y';
-  if (w.length > 4 && w.endsWith('ed')) return w.slice(0, -2);
-  if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1);
-  return w;
-}
-
-const tokens = (s: string) =>
-  norm(s)
-    .split(/\s+/)
-    .map((w) => w.replace(/^[.-]+|[.-]+$/g, ''))
-    .filter((w) => w && !STOP.has(w))
-    .map(stem);
-
-let index: Index | null = null;
-let prepared: { doc: Doc; title: Set<string>; keys: Set<string>; body: Map<string, number> }[] = [];
+let index: AskIndex | null = null;
+let searcher: Searcher | null = null;
 
 async function load() {
-  if (index) return index;
+  if (index && searcher) return { index, searcher };
   const res = await fetch('/ask-index.json');
-  index = (await res.json()) as Index;
-  prepared = index.docs.map((doc) => {
-    const body = new Map<string, number>();
-    for (const t of tokens(doc.text)) body.set(t, (body.get(t) ?? 0) + 1);
-    return { doc, title: new Set(tokens(doc.title)), keys: new Set(doc.keywords.flatMap(tokens)), body };
-  });
-  return index;
-}
-
-function expand(q: string[], synonyms: Record<string, string[]>) {
-  const out = new Map<string, number>();
-  for (const t of q) {
-    out.set(t, Math.max(out.get(t) ?? 0, 1));
-    for (const s of synonyms[t] ?? []) for (const st of tokens(s)) out.set(st, Math.max(out.get(st) ?? 0, 0.8));
-  }
-  return out;
-}
-
-function search(query: string) {
-  if (!index) return [];
-  const raw = tokens(query);
-  const q = expand(raw, index.synonyms);
-  if (!q.size) return [];
-  const phrase = raw.join(' ');
-  return prepared
-    .map((p) => {
-      let score = 0;
-      // Exact multi-word matches ("order book") beat scattered single words.
-      if (raw.length > 1 && tokens(p.doc.title).join(' ').includes(phrase)) score += 6;
-      for (const [t, w] of q) {
-        if (p.title.has(t)) score += 3 * w;
-        if (p.keys.has(t)) score += 2.5 * w;
-        const f = p.body.get(t);
-        if (f) score += Math.min(1 + Math.log(f), 2) * w;
-      }
-      return { doc: p.doc, score };
-    })
-    .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score);
+  if (!res.ok) throw new Error(String(res.status));
+  index = (await res.json()) as AskIndex;
+  searcher = createSearcher(index);
+  return { index, searcher };
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string) {
@@ -96,6 +22,25 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   if (cls) n.className = cls;
   if (text) n.textContent = text;
   return n;
+}
+
+function links(hits: AskHit[], label: string) {
+  const p = el('p', 'ask__see', label);
+  hits.forEach((h, i) => {
+    const a = el('a', 'link link--quiet', h.doc.title);
+    a.setAttribute('href', h.doc.url);
+    p.append(a);
+    if (i < hits.length - 1) p.append(document.createTextNode(' · '));
+  });
+  return p;
+}
+
+function contactLine(email: string, lead: string) {
+  const p = el('p', '', lead);
+  const a = el('a', 'link link--underlined', email);
+  a.setAttribute('href', `mailto:${email}`);
+  p.append(a, document.createTextNode('.'));
+  return p;
 }
 
 export function initAsk() {
@@ -106,6 +51,7 @@ export function initAsk() {
   const form = root.querySelector<HTMLFormElement>('[data-ask-form]')!;
   const input = root.querySelector<HTMLInputElement>('[data-ask-input]')!;
   const log = root.querySelector<HTMLElement>('[data-ask-log]')!;
+  const body = root.querySelector<HTMLElement>('.ask__body')!;
   const backdrop = root.querySelector<HTMLElement>('[data-ask-backdrop]')!;
   let isOpen = false;
 
@@ -150,32 +96,32 @@ export function initAsk() {
     const reply = el('li', 'ask__a');
     log.append(reply);
     try {
-      const idx = await load();
-      const results = search(q);
-      if (!results.length) {
-        reply.textContent = idx.fallback;
-      } else {
-        const [top, ...rest] = results;
+      const { index: idx, searcher: engine } = await load();
+      const result = engine.search(q);
+      if (result.kind === 'greeting') {
+        reply.append(el('p', '', 'Hi! Ask me about my projects, courses, writing, or how to get in touch.'));
+      } else if (result.kind === 'thanks') {
+        reply.append(el('p', '', "You're welcome."));
+      } else if (result.kind === 'answer') {
+        const { top, related } = result;
         reply.append(el('p', '', top.doc.answer));
         const link = el('a', 'ask__link link', `${top.doc.title} →`);
         link.setAttribute('href', top.doc.url);
         reply.append(link);
-        const related = rest.filter((r) => r.score >= top.score * 0.45 && r.doc.url !== top.doc.url).slice(0, 2);
-        if (related.length) {
-          const see = el('p', 'ask__see', 'see also: ');
-          related.forEach((r, i) => {
-            const a = el('a', 'link link--quiet', r.doc.title);
-            a.setAttribute('href', r.doc.url);
-            see.append(a);
-            if (i < related.length - 1) see.append(document.createTextNode(' · '));
-          });
-          reply.append(see);
-        }
+        if (related.length) reply.append(links(related, 'see also: '));
+      } else if (result.kind === 'unsure') {
+        reply.append(el('p', '', "I couldn't find an exact answer to that on this site."));
+        reply.append(links(result.related, 'closest matches: '));
+        reply.append(contactLine(idx.email, 'For anything else, email me at '));
+      } else {
+        reply.append(el('p', '', "Sorry, I couldn't find anything about that on this site."));
+        reply.append(contactLine(idx.email, 'For more info, email me at '));
       }
     } catch {
-      reply.textContent = 'Could not load the site index. Try again in a moment.';
+      reply.textContent = "Couldn't load the site index. Try again in a moment.";
     }
-    log.scrollTop = log.scrollHeight;
+    // Keep the newest question and answer in view.
+    body.scrollTop = body.scrollHeight;
   };
 
   openBtn.addEventListener('click', () => setOpen(!isOpen));

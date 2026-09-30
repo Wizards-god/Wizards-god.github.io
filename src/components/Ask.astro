@@ -1,9 +1,10 @@
 ---
 // Floating "ask" box. Answers come from /ask-index.json, a keyword index of
-// this site built at build time. There is no AI and no server behind it.
+// this site built at build time. There is no AI and no server behind it, and
+// nothing typed into it leaves the browser.
 import Icon from './Icon.astro';
 
-const suggestions = ['What are you studying?', 'How do I contact you?', 'Where is your resume?', 'What are you building?'];
+const suggestions = ['What are you studying?', 'What courses are you taking?', 'What are you building?', 'How do I contact you?'];
 ---
 
 <div class="ask" data-ask transition:persist="ask">
@@ -23,7 +24,7 @@ const suggestions = ['What are you studying?', 'How do I contact you?', 'Where i
   >
     <header class="ask__head">
       <h2 id="ask-title" class="ask__title"><span class="ask__prompt">&gt;</span> ask</h2>
-      <p class="ask__note">offline · searches this site, no AI</p>
+      <p class="ask__note">searches this site · not an AI</p>
       <button type="button" class="ask__close" data-ask-close aria-label="Close">
         <Icon name="x" size={18} />
       </button>
@@ -289,6 +290,10 @@ const suggestions = ['What are you studying?', 'How do I contact you?', 'Where i
   .ask__log :global(.ask__see) {
     display: inline-block;
     margin-top: 4px;
+  }
+
+  .ask__log :global(.ask__a p + p) {
+    margin-top: 6px;
   }
 
   .ask__log :global(.ask__see) {

@@ -1,77 +1,42 @@
 # parjanya.me
 
-Personal site of Parjanya Shankar. Static Astro site, hosted on Vercel at [parjanya.me](https://parjanya.me).
+The code behind my personal website, [parjanya.me](https://parjanya.me). I'm Parjanya, a Computer Science student at the University of Illinois Urbana-Champaign with an intended Math minor, and the site is where I put my projects, coursework and writing.
 
-Stack: Astro 7, TypeScript, Tailwind CSS v4, MDX (KaTeX math, Shiki code blocks), small vanilla-TS modules for the interactions. No server, no database, no secrets.
+## What's on it
 
-## Run it
+- **Home**: who I am, what I'm open to right now, my experience, a few projects I'd point you to first, and how to reach me.
+- **About**: the longer version. Education, what I'm working on and reading at the moment, and the languages I speak.
+- **Projects**: things I've built, each with a write-up of how it went, what didn't work, and what I'd change next time.
+- **Writing**: longer posts. The first one explains how the intro animation works.
+- **Coursework**: my classes at UIUC, semester by semester, with my notes as PDFs where I have them. Gen eds are hidden behind a toggle.
+- **Bookshelf**: books I've read or am reading, with a few thoughts on each.
+- **Resume**: getting rebuilt at the moment. The PDF is still at [/resume.pdf](https://parjanya.me/resume.pdf).
+
+## Things to try
+
+- Open the site in a new tab. My name types itself out, and then you fly through the hole in the second "a".
+- Hover over my name in the top left. It switches between Kannada, Telugu and Sanskrit.
+- Switch between light and dark mode, and click around between pages.
+- Watch the chart on the home page for a bit. It's a random walk seeded with the current time in India, and it moves every few seconds.
+- Press "ask" in the bottom right corner and ask about my courses, projects or how to contact me. It isn't an AI. It searches the site itself, so nothing you type goes anywhere.
+
+If your device is set to reduce motion, the animations tone down or switch off. The site also works with JavaScript turned off.
+
+## Built with
+
+[Astro](https://astro.build), TypeScript, Tailwind CSS and MDX. Maths is rendered with KaTeX, code highlighting uses Shiki, and it's hosted on Vercel.
+
+To run it yourself (Node 22.12 or newer):
 
 ```bash
 npm install
-npm run dev          # http://localhost:4321
-npm run build        # static output in dist/
-npm run preview      # serve dist/
-npm run ci           # type check + build + link check (what CI runs)
+npm run dev
 ```
-
-Node 22.12 or newer.
-
-## Editing content
-
-Everything you'd normally change lives in two places:
-
-| What | Where |
-|---|---|
-| Name, tagline, status pill, email, socials, home section order, intro settings | `src/data/site.ts` |
-| Bio, education timeline, "currently", interests, languages, skills | `src/data/about.ts` |
-| Projects (case studies) | `src/content/projects/*.mdx` |
-| Experience (home-page tabs, resume) | `src/content/experience/*.md` |
-| Courses (`status`: completed, in progress or intended; `category`: stem, or gen-ed to sit behind the gen-ed toggle) | `src/content/courses/courses.yaml` |
-| Awards | `src/content/awards/*.md` |
-| Books | `src/content/books/*.md` |
-| Posts | `src/content/writing/*.mdx` |
-| Photo | `src/assets/portrait-placeholder.png` (then set `photoIsPlaceholder = false` in `src/components/home/HomeAbout.astro`) |
-
-The frontmatter schemas are in `src/content.config.ts`. A featured project without a `cover` fails the build.
-
-### Placeholders
-
-Anything not yet verified is marked `placeholder: true` and shows a small dashed **placeholder** tag on the site (and in the resume PDF). Every build prints the full list. Replace or delete them before launch; setting `showPlaceholders: false` in `site.ts` hides all remaining ones at once.
-
-### Dated content
-
-`site.status.updated` and `currently.updated` are dates. The build warns when either is more than 90 days old, so the site doesn't quietly go stale.
-
-### Resume
-
-`/resume` is an "under construction" page for now. The full HTML resume, built from the same content, lives in `src/pages/resume-print/`. That route is only generated for printing, never for the public site. To regenerate `public/resume.pdf` from it:
-
-```bash
-npm run resume:pdf
-```
-
-This does its own temporary build and needs Chrome or Edge installed (set `CHROME_PATH` if it can't be found). You can also drop your own PDF at `public/resume.pdf`. The link checker fails the build if the file is missing. To bring the HTML resume back as the public page, move `src/pages/resume-print/[...slug].astro` back to `src/pages/resume.astro` and remove its `getStaticPaths`.
-
-## Deploying
-
-The site is hosted on Vercel, which builds and deploys every push to `main` automatically (framework preset: Astro, build command `npm run build`, output `dist/`). Vercel runs the `prebuild` step too, so the intro glyphs and favicons are regenerated on every deploy.
-
-`.github/workflows/ci.yml` runs on every push and pull request. It type-checks, builds, runs the link checker, and posts an informational Lighthouse report against `lighthouserc.json`. It doesn't deploy anything.
-
-## How the moving parts work
-
-- **Intro** (`src/scripts/intro.ts`, `src/components/Intro.astro`): `scripts/generate-intro-glyphs.mjs` turns "parjanya." into SVG outlines with opentype.js at build time (`prebuild`), including the counter of the second "a". The intro types the name, then zooms through that counter by writing an SVG `transform` each frame, interpolating the scale in log space. It plays on the first page load of a browser session. Useful URL flags: `?intro=1` forces it, `?intro=0` skips it (use this for Lighthouse), and `?slow=4` slows every animation 4× (remembered for the session; `?slow=1` resets).
-- **Page transitions** (`src/scripts/page.ts`, `shutter.ts`): Astro's `<ClientRouter />` plus a two-panel shutter that closes while the next page loads and opens once it has painted. Reduced motion gets a crossfade.
-- **Theme** (`src/scripts/theme.ts`, inline script in `src/components/Head.astro`): no-flash theme from `localStorage` or the system preference, curtain wipe on toggle.
-- **Ask box** (`src/scripts/ask.ts`, `src/pages/ask-index.json.ts`): keyword and synonym search over a JSON index built from the site's content. No AI, no server.
-- **OG images** (`src/pages/og/[...slug].png.ts`): a 1200×630 card for every page, rendered at build time.
 
 ## Credits
 
-- Fonts: [Geist and Geist Mono](https://vercel.com/font), plus small subsets of Noto Sans Kannada, Telugu and Devanagari for the name in other scripts (all SIL Open Font License; see `public/fonts/`).
-- The animated construction emoji on `/resume` is from [Noto Emoji Animation](https://googlefonts.github.io/noto-emoji-animation/) (CC BY 4.0), credited on the page.
-
-## Other scripts
-
-- `node scripts/generate-art.mjs` regenerates the placeholder artwork in `src/assets/`.
-- `npm run check:links` checks every internal link, asset and `#fragment` in `dist/`.
+- Some features are inspired by [Madhav Menon](https://github.com/MadhavMenon10)'s site, including the ask box, the name that changes script on hover, and the coursework page.
+- Others are inspired by [Wanqi Zhu](https://wanqizhu.com)'s site, including the tabbed experience section, the featured projects, and the bookshelf.
+- Fonts are [Geist and Geist Mono](https://vercel.com/font), plus small parts of Noto Sans Kannada, Telugu and Devanagari for my name in other scripts. All are under the SIL Open Font License.
+- The animated construction emoji on the resume page is from [Noto Emoji Animation](https://googlefonts.github.io/noto-emoji-animation/) (CC BY 4.0).
+- Built with help from Claude Code.
