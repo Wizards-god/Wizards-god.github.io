@@ -1,5 +1,5 @@
-# Checks every push and pull request: type check, build, link check, and an
-# informational Lighthouse report. Hosting is on Vercel, which builds and
+# Checks every push and pull request: unit tests, type check, build, link
+# check, and an informational Lighthouse report. Hosting is on Vercel, which builds and
 # deploys main on its own, so this workflow never deploys anything.
 
 name: CI
@@ -28,6 +28,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Unit tests
+        run: npm test
 
       - name: Type check
         run: npx astro check

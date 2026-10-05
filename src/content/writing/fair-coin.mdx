@@ -1,0 +1,86 @@
+---
+title: A fair coin that rarely looks fair
+date: 2026-10-04
+summary: How the little chart on my home page works, and why a perfectly fair random walk spends most of its time on one side of where it started.
+tags: [maths, probability, web]
+draft: false
+---
+
+The little chart on my home page, the one labelled PRJ, is a made-up price. Every couple of seconds it takes a step, and the two lines under it describe the last 33 steps. The second line is my favourite part, because the maths behind it says a fair coin rarely looks fair.
+
+## How the price moves
+
+The first version had a tiny upward drift built in, so it slowly crept up. I took that out. Now every tick multiplies the price by
+
+$$
+e^{\sigma z}, \qquad \sigma = 0.01,
+$$
+
+where $z$ is a fresh random number from a standard normal distribution. Each tick moves the price by about 1%, and up and down are equally likely.
+
+Multiplying instead of adding has two nice side effects. The price can never go negative, and a 1% move looks the same whether the price is at 60 or at 160. If you take logs, it turns back into a plain random walk: $\ln p$ moves by $\sigma z$ each tick, with no drift at all.
+
+The random numbers come from a small generator called mulberry32, seeded with a hash of the time in India when you open the page, down to the second. Two people who load the page in different seconds get different walks. The site also draws a first frame when it's built, so there's a chart even with JavaScript turned off.
+
+The chart shows the last 34 prices, which is 33 ticks. When a new tick comes in, the oldest one drops off the left edge.
+
+## The two lines underneath
+
+The first line looks like this:
+
+```text
++1.32% since open · above it 31/33 ticks
+```
+
+"Open" is the first price currently on screen, so it changes as the chart scrolls. The line says where the latest price is compared with the open, and how many of the 33 ticks after it finished above it.
+
+I expected that count to sit near the middle most of the time. The walk is fair, so it should spend about half its time above the open and half below, and 16 or 17 out of 33 should be the most common result.
+
+It's the other way round. The most likely counts are 0 and 33, and the least likely are 16 and 17:
+
+| Ticks above the open | Chance |
+| --- | --- |
+| 33 (above the whole time) | 9.8% |
+| 0 (below the whole time) | 9.8% |
+| 17 | 1.9% |
+| 16 | 1.9% |
+
+## The arcsine law
+
+If $N$ is how many of the $n$ steps end above the starting point, then
+
+$$
+P(N = k) = u_k \, u_{n-k}, \qquad u_m = \binom{2m}{m} \frac{1}{4^m}.
+$$
+
+For $n = 33$ that gives a U shape: high at both ends and lowest in the middle. As $n$ grows, the share of time spent above the start, $N/n$, follows the arcsine distribution, with density $\frac{1}{\pi\sqrt{x(1-x)}}$ on $(0, 1)$. That's where the name comes from.
+
+Once the walk wanders off to one side, getting back to the open is slow. Each step is as likely to take it further away as to bring it back. For a simple coin-flip walk, the expected time to come back to the start is actually infinite. So walks that cross back and forth a lot are rare, and walks that pick a side and stay there are common.
+
+That formula comes from coin flips, where every step is exactly +1 or −1. My chart's steps are normally distributed, so I wasn't sure it applied. It does, exactly. In the 1950s Erik Sparre Andersen proved that the same distribution holds for any walk whose steps are independent, symmetric and continuous. So the table above is exact for my chart too.
+
+## From the table to a sentence
+
+Building the table only takes a few lines, using $u_0 = 1$ and $u_m = u_{m-1} \cdot \frac{2m-1}{2m}$:
+
+```ts
+export function arcsineTable(n: number) {
+  const u = [1];
+  for (let m = 1; m <= n; m++) u.push((u[m - 1] * (2 * m - 1)) / (2 * m));
+  return Array.from({ length: n + 1 }, (_, k) => u[k] * u[n - k]);
+}
+```
+
+The second line measures how far the count is from the middle, $d = |N - 16.5|$, and adds up the chance of every count at least that far out. When the count is close to the middle (14 to 19 ticks), it flips around and says how rare it is to be that balanced instead. A few examples:
+
+- 33 out of 33: "20% of fair walks are at least this one-sided"
+- 31 out of 33: "37% of fair walks are at least this one-sided"
+- 17 out of 33: "only 4% of fair walks are this balanced"
+
+A price that stays above its open for 31 of 33 ticks looks like a strong trend. A fair coin does that, or something even more lopsided, 37% of the time.
+
+## Checking it
+
+The site's tests simulate 20,000 windows with the same walker the chart uses. For every possible count, the share of windows has to land within one percentage point of the table, and the average log-return per tick has to be within three standard errors of zero. Both pass.
+
+If you leave the home page open for a while, the balanced message turns up in about one window in nine.

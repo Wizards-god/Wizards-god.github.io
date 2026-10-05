@@ -1,6 +1,11 @@
-// ASCII line chart of a seeded random walk (box-drawing characters, in the
-// style of asciichart). Shared by the build (first paint) and the browser,
+// ASCII line chart of a seeded fair random walk (box-drawing characters, in
+// the style of asciichart). Shared by the build (first paint) and the browser,
 // which re-seeds with the time in India and keeps the walk moving.
+//
+// The walk has no drift: each tick multiplies the price by exp(sigma * z) with
+// z a standard normal, so up and down are equally likely. Under the chart,
+// windowStats() counts how many ticks finished above the first point on screen
+// and says how often a fair walk is that one-sided (the discrete arcsine law).
 
 function mulberry32(seed: number) {
   return () => {
@@ -18,9 +23,9 @@ function hash(s: string) {
   return h >>> 0;
 }
 
-export const CHART = { points: 34, rows: 7, start: 100, vol: 0.9, drift: 0.03 } as const;
+export const CHART = { points: 34, rows: 7, start: 100, sigma: 0.01 } as const;
 
-/** A seeded random walk that can keep stepping: step() returns the next value. */
+/** A seeded fair random walk that can keep stepping: step() returns the next value. */
 export function walker(seed: string, start: number = CHART.start) {
   const rand = mulberry32(hash(seed));
   let value = start;
@@ -29,7 +34,7 @@ export function walker(seed: string, start: number = CHART.start) {
       const u = 1 - rand();
       const v = rand();
       const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-      value += z * CHART.vol + CHART.drift;
+      value *= Math.exp(CHART.sigma * z);
       return value;
     },
   };
@@ -41,6 +46,64 @@ export function randomWalk(seed: string, n: number = CHART.points) {
   const out = [CHART.start as number];
   for (let i = 1; i < n; i++) out.push(w.step());
   return { series: out, walker: w };
+}
+
+/**
+ * Exact distribution of N, the number of steps (out of n) that end above the
+ * starting point, for any fair walk with continuous, symmetric steps:
+ * P(N = k) = u(k) · u(n − k), where u(m) = C(2m, m) / 4^m is built up as
+ * u(0) = 1, u(m) = u(m − 1) · (2m − 1) / (2m). Index k of the result is P(N = k).
+ */
+export function arcsineTable(n: number) {
+  const u = [1];
+  for (let m = 1; m <= n; m++) u.push((u[m - 1] * (2 * m - 1)) / (2 * m));
+  return Array.from({ length: n + 1 }, (_, k) => u[k] * u[n - k]);
+}
+
+const STEPS = CHART.points - 1;
+const TABLE = arcsineTable(STEPS);
+const tableFor = (n: number) => (n === STEPS ? TABLE : arcsineTable(n));
+
+/** P(|N − n/2| ≥ |above − n/2|): how often a fair walk is at least this one-sided. */
+export function probAtLeastAsOneSided(above: number, n: number = STEPS) {
+  const d = Math.abs(above - n / 2);
+  return tableFor(n).reduce((sum, p, k) => (Math.abs(k - n / 2) >= d ? sum + p : sum), 0);
+}
+
+/** P(|N − n/2| ≤ |above − n/2|): how often a fair walk is at most this one-sided. */
+export function probAtMostAsOneSided(above: number, n: number = STEPS) {
+  const d = Math.abs(above - n / 2);
+  return tableFor(n).reduce((sum, p, k) => (Math.abs(k - n / 2) <= d ? sum + p : sum), 0);
+}
+
+export interface WindowStats {
+  /** How many of series[1..n] finished above series[0] (the open). */
+  above: number;
+  n: number;
+  /** Last point relative to the open, in per cent. */
+  changePct: number;
+  /** Second footer line: how unusual that count is for a fair walk. */
+  line2: string;
+}
+
+/** Stats for the window on screen. The open is its first point, so they change as it scrolls. */
+export function windowStats(series: number[]): WindowStats {
+  const n = series.length - 1;
+  const open = series[0];
+  let above = 0;
+  for (let i = 1; i <= n; i++) if (series[i] > open) above++;
+  const changePct = ((series[n] - open) / open) * 100;
+  const d = Math.abs(above - n / 2);
+  const line2 =
+    d <= 2.5
+      ? `only ${Math.round(100 * probAtMostAsOneSided(above, n))}% of fair walks are this balanced`
+      : `${Math.round(100 * probAtLeastAsOneSided(above, n))}% of fair walks are at least this one-sided`;
+  return { above, n, changePct, line2 };
+}
+
+/** First footer line, e.g. "+1.32% since open · above it 31/33 ticks". */
+export function changeLine({ changePct, above, n }: WindowStats) {
+  return `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}% since open · above it ${above}/${n} ticks`;
 }
 
 export interface ChartRow {

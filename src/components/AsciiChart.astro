@@ -1,27 +1,45 @@
 ---
-// Decorative ASCII price chart: a random walk. The build draws a first frame
-// (so it shows without JavaScript); in the browser, scripts/ascii-chart.ts
+// Decorative ASCII price chart: a fair random walk. The build draws a first
+// frame (so it shows without JavaScript); in the browser, scripts/ascii-chart.ts
 // re-seeds it with the current time in India and steps it every few seconds.
-import { randomWalk, plot } from '../lib/ascii-chart';
+import { getEntry } from 'astro:content';
+import { randomWalk, plot, windowStats, changeLine } from '../lib/ascii-chart';
 import { buildDate } from '../lib/build-info';
 import { isoDate } from '../lib/format';
+import { postUrl } from '../lib/content';
+import { site } from '../data/site';
 
 const seed = isoDate(buildDate);
 const { series } = randomWalk(seed);
 const rows = plot(series);
 const last = series[series.length - 1];
-const change = ((last - series[0]) / series[0]) * 100;
+const stats = windowStats(series);
 const pad = ' '.repeat(rows[0].label.length + 2);
+
+// "→ why" links to the post about the chart, once it's published.
+const post = await getEntry('writing', site.chartPostSlug);
+const whyHref = post && !post.data.draft ? postUrl(post) : null;
 ---
 
 <figure class="ascii" data-enter style="--i: 6" data-ascii>
-  <pre class="ascii__pre" aria-hidden="true" data-ascii-pre><span class="ascii__head">PRJ · random walk · seed {seed}</span>
+  <pre class="ascii__pre" aria-hidden="true" data-ascii-pre><span class="ascii__head">PRJ · fair random walk · seed {seed}</span>
 {rows.map((r) => (
   <>{r.label} {r.label.trim() ? '┤' : '│'}{r.cells}{r.last && <span class="ascii__last"> {last.toFixed(2)}</span>}{'\n'}</>
-))}<span class="ascii__head">{pad}{change >= 0 ? '+' : ''}{change.toFixed(2)}% since open</span></pre>
+))}<span class="ascii__head">{pad}{changeLine(stats)}</span>
+<span class="ascii__head">{pad}{stats.line2}</span></pre>
+  {
+    whyHref && (
+      <p class="ascii__why" style={`padding-left: ${pad.length}ch`} data-ascii-why><a
+          href={whyHref}
+          class="link link--underlined"><span aria-hidden="true">→ </span>why<span class="visually-hidden"
+            >: how this chart works</span
+          ></a
+        ></p>
+    )
+  }
   <figcaption class="visually-hidden">
-    Decorative chart: a made-up price following a random walk, seeded from the time in India and updated every few
-    seconds.
+    A made-up price that moves like a fair coin, about 1% per tick. Underneath: how many of the last 33 ticks finished
+    above the first one, and how often a fair random walk is at least that one-sided, or that balanced.
   </figcaption>
 </figure>
 
@@ -49,5 +67,13 @@ const pad = ' '.repeat(rows[0].label.length + 2);
 
   .ascii__pre :global(.ascii__last) {
     color: var(--accent);
+  }
+
+  /* Same font and size as the <pre>, so `ch` padding lines it up with the footer. */
+  .ascii__why {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: clamp(9px, 2.7vw, 12px);
+    line-height: 1.35;
   }
 </style>

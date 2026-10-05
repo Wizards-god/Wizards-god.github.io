@@ -14,8 +14,9 @@
     "preview": "astro preview",
     "check": "astro check",
     "check:links": "node scripts/check-links.mjs",
+    "test": "node --experimental-strip-types --no-warnings --test \"tests/*.test.ts\"",
     "resume:pdf": "node scripts/resume-pdf.mjs",
-    "ci": "astro check && astro build && node scripts/check-links.mjs",
+    "ci": "npm test && astro check && astro build && node scripts/check-links.mjs",
     "astro": "astro"
   },
   "allowScripts": {
