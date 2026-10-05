@@ -20,7 +20,7 @@ export default defineConfig({
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
     mdx(),
-    sitemap({ filter: (page) => !page.endsWith('/404/') && !page.endsWith('/404') }),
+    sitemap({ filter: (page) => !/\/(404|429)\/?$/.test(page) }),
     siteChecks(),
   ],
   markdown: {

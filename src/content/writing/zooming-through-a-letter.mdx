@@ -2,7 +2,7 @@
 title: Zooming through a letter
 date: 2026-09-29
 summary: How I made the intro type out "parjanya." and then fly through the hole in the second "a", and why the zoom works in log space.
-tags: [web, svg, math]
+tags: [web, svg, maths]
 draft: false
 ---
 
@@ -14,7 +14,7 @@ Here's how I built it, plus the one bit of maths that makes it feel right.
 
 Web fonts take a moment to load, and I wanted the intro on screen from the very first frame. So my letters aren't text at all. When the site builds, a script I wrote opens the same font file the site uses (Geist Medium) with `opentype.js` and saves each character as an SVG path, already spaced out with the font's own advance widths and kerning.[^kerning]
 
-The script also pulls out one special shape: the **counter** of the second "a", the enclosed hole in its lower bowl. In Geist Medium that "a" is made of exactly two outlines, and the inner one is 243 by 179 font units. That little shape is the whole trick.
+The script also pulls out one special shape: the **counter** of the second "a", the enclosed hole in its lower bowl. In Geist Medium that "a" is made of exactly two outlines, and the inner one is 243 by 179 font units. Everything else in the intro is built around that shape.
 
 ## A background with a hole in it
 

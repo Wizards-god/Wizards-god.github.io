@@ -3,13 +3,17 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 /** "Sep 2026" (UTC, so dates from frontmatter never shift a day). */
 export const monthYear = (d: Date) => `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 
-/** "Sep 29, 2026" */
-export const fullDate = (d: Date) => `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+/** "29 Sep 2026" */
+export const fullDate = (d: Date) => `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 
 /** "2026-09-29" */
 export const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 /** "Sep 2026 – Present" when end is null. */
+/** An award or result date: just the year when that's all that matters. */
+export const awardDate = (d: Date, precision: 'month' | 'year' = 'month') =>
+  precision === 'year' ? String(d.getUTCFullYear()) : monthYear(d);
+
 export const dateRange = (start: Date, end: Date | null) => `${monthYear(start)} – ${end ? monthYear(end) : 'Present'}`;
 
 /** "2026 – 2030" style year range. */

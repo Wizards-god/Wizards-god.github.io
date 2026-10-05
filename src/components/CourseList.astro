@@ -29,7 +29,6 @@ const { groups, headingLevel: H = 'h2' } = Astro.props;
                   )}
                 </span>
                 <span class="course__status">
-                  {c.data.credits && <span class="course__credits">{c.data.credits} cr</span>}
                   {c.data.category === 'gen-ed' && <span class="course__kind">gen ed</span>}
                   <PlaceholderTag show={c.data.placeholder} />
                   <span class="status-chip" data-status={c.data.status}>
@@ -96,7 +95,6 @@ const { groups, headingLevel: H = 'h2' } = Astro.props;
     font-size: 12px;
   }
 
-  .course__credits,
   .course__kind {
     display: inline-flex;
     align-items: center;

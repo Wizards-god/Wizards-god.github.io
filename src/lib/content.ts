@@ -45,13 +45,17 @@ export async function getCoursesByTerm() {
 
 export async function getAwards() {
   const all = await getCollection('awards', visible);
-  return all.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+  return all.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf() || a.data.title.localeCompare(b.data.title));
 }
 
 export async function getBooks() {
   const all = await getCollection('books', visible);
   return all.sort(
-    (a, b) => Number(b.data.favorite) - Number(a.data.favorite) || b.data.year - a.data.year || a.data.title.localeCompare(b.data.title),
+    (a, b) =>
+      Number(b.data.reading) - Number(a.data.reading) ||
+      Number(b.data.favorite) - Number(a.data.favorite) ||
+      b.data.year - a.data.year ||
+      a.data.title.localeCompare(b.data.title),
   );
 }
 

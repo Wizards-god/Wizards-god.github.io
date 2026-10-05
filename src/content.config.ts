@@ -74,6 +74,8 @@ const awards = defineCollection({
     title: z.string(),
     issuer: z.string(),
     date: z.coerce.date(),
+    /** 'year' shows just the year, for results without a meaningful month. */
+    precision: z.enum(['month', 'year']).default('month'),
     note: z.string().optional(),
     placeholder,
   }),
@@ -89,6 +91,8 @@ const books = defineCollection({
     reflection: z.string(),
     url: z.url().optional(),
     favorite: z.boolean().default(false),
+    /** Still reading it: shown as "reading now" and listed first. */
+    reading: z.boolean().default(false),
     placeholder,
   }),
 });

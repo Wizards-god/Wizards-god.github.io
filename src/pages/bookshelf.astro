@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import BookCard from '../components/BookCard.astro';
 import { getBooks } from '../lib/content';
+import { site } from '../data/site';
 
 const LIMIT = 6;
 const books = await getBooks();
@@ -19,33 +20,38 @@ const years = [...new Set(books.map((b) => b.data.year))].sort((a, b) => b - a);
       <p class="eyebrow" data-enter style="--i: 0">bookshelf</p>
       <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Bookshelf</h1>
       <p class="lede" data-enter style="--i: 2">
-        Books that stayed with me, favourites first, with a line or two on why.
+        What I'm reading now, then the books I've read, favourites first, with a line or two on each.
       </p>
     </header>
 
     <div data-filter-root data-limit={LIMIT} data-noun="books">
-      <div class="filters js-only" data-enter style="--i: 3">
-        <div class="chips" role="group" aria-label="Filter by tag">
-          <button type="button" class="chip" data-filter-key="tags" data-filter-value="all" aria-pressed="true">all</button>
-          {
-            tags.map((t) => (
-              <button type="button" class="chip" data-filter-key="tags" data-filter-value={t} aria-pressed="false">
-                {t}
+      {/* Hidden until there are enough books: switch this on in site.listControls. */}
+      {
+        site.listControls.bookFilters && (
+          <div class="filters js-only" data-enter style="--i: 3">
+            <div class="chips" role="group" aria-label="Filter by tag">
+              <button type="button" class="chip" data-filter-key="tags" data-filter-value="all" aria-pressed="true">
+                all
               </button>
-            ))
-          }
-        </div>
-        <div class="chips" role="group" aria-label="Filter by year read">
-          <button type="button" class="chip" data-filter-key="year" data-filter-value="all" aria-pressed="true">any year</button>
-          {
-            years.map((y) => (
-              <button type="button" class="chip" data-filter-key="year" data-filter-value={String(y)} aria-pressed="false">
-                {y}
+              {tags.map((t) => (
+                <button type="button" class="chip" data-filter-key="tags" data-filter-value={t} aria-pressed="false">
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div class="chips" role="group" aria-label="Filter by year read">
+              <button type="button" class="chip" data-filter-key="year" data-filter-value="all" aria-pressed="true">
+                any year
               </button>
-            ))
-          }
-        </div>
-      </div>
+              {years.map((y) => (
+                <button type="button" class="chip" data-filter-key="year" data-filter-value={String(y)} aria-pressed="false">
+                  {y}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      }
 
       <ul class="books" data-filter-list data-reveal-stagger>
         {books.map((b, i) => <BookCard book={b} hidden={i >= LIMIT} />)}

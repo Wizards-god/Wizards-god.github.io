@@ -7,9 +7,9 @@ export const site = {
   name: 'Parjanya Shankar',
   wordmark: 'parjanya.',
   domain: 'https://parjanya.me',
-  tagline: 'CS @ UIUC · building toward quant research',
+  tagline: 'CS @ UIUC · building towards quant research',
   description:
-    'Parjanya Shankar: Computer Science student at the University of Illinois Urbana-Champaign (Class of 2030, intended Math minor), working toward quantitative research.',
+    'Parjanya Shankar: Computer Science student at the University of Illinois Urbana-Champaign (Class of 2030, intended Maths minor), working towards quantitative research.',
 
   status: {
     text: 'Open to research & SWE internships · Summer 2027',
@@ -52,6 +52,20 @@ export const site = {
   analytics: { goatcounter: '' },
 
   ask: { enabled: true },
+
+  // Filters and the rows/cards toggle on /projects and /bookshelf. Hidden for
+  // now because there aren't enough projects or books for them to help. Set
+  // any of these to true to bring that control back; the code that runs them
+  // (src/scripts/filters.ts) is unchanged.
+  listControls: {
+    projectFilters: false,
+    projectViewToggle: false,
+    bookFilters: false,
+  },
+
+  // Writing post linked as "→ why" under the home page chart. The link only
+  // appears once a published post with this slug exists.
+  chartPostSlug: 'fair-coin',
 } as const;
 
 export type Site = typeof site;

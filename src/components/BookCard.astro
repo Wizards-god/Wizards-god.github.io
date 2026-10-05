@@ -8,7 +8,7 @@ interface Props {
   hidden?: boolean;
 }
 const { book, hidden = false } = Astro.props;
-const { title, author, reflection, tags, url, year, placeholder } = book.data;
+const { title, author, reflection, tags, url, year, reading, placeholder } = book.data;
 ---
 
 <li class="book" data-item data-tags={tags.join('|')} data-year={String(year)} hidden={hidden} data-reveal>
@@ -24,7 +24,7 @@ const { title, author, reflection, tags, url, year, placeholder } = book.data;
       }
     </div>
     <h2 class="book__title">{title}</h2>
-    <p class="book__author">{author} <span aria-hidden="true">·</span> <span class="book__year">read {year}</span></p>
+    <p class="book__author">{author} <span aria-hidden="true">·</span> <span class="book__year">{reading ? 'reading now' : `read ${year}`}</span></p>
     <p class="book__reflection">{reflection}</p>
     <ul class="book__tags tag-list">
       {tags.map((t) => <li class="tag">{t}</li>)}

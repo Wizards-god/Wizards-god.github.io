@@ -1,0 +1,55 @@
+---
+// Easter egg at /429. Nothing links here and it stays out of the sitemap.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import CyclingP from '../components/CyclingP.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<BaseLayout title="Too many requests" description="Slow down a bit." ogImage="/og/home.png" noindex>
+  <div class="page wrap tm">
+    <div data-enter style="--i: 0"><CyclingP /></div>
+    <h1 class="tm__code" data-enter style="--i: 1" tabindex="-1">
+      429<span class="visually-hidden">: too many requests</span>
+    </h1>
+    <p class="tm__text" data-enter style="--i: 2">You tryna DDoS me, bruh?</p>
+    <p class="tm__sub" data-enter style="--i: 3">Too many requests. Take a breather and try again in a minute.</p>
+    <p data-enter style="--i: 4">
+      <a href="/" class="btn btn--primary">
+        <Icon name="arrow-left" size={16} /> Back home
+      </a>
+    </p>
+  </div>
+</BaseLayout>
+
+<style>
+  .tm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    min-height: 80vh;
+    min-height: 80svh;
+    text-align: center;
+  }
+
+  .tm__code {
+    margin-top: -8px;
+    color: var(--text);
+    font-size: clamp(72px, 16vw, 160px);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.05em;
+  }
+
+  .tm__text {
+    color: var(--text);
+    font-size: 18px;
+  }
+
+  .tm__sub {
+    margin-top: -12px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+</style>

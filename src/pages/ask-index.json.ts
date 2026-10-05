@@ -12,12 +12,15 @@ import {
   postUrl,
   projectUrl,
 } from '../lib/content';
-import { dateRange, monthYear } from '../lib/format';
+import { awardDate, dateRange } from '../lib/format';
 import type { AskDoc, AskIndex } from '../lib/ask-search';
 
 const strip = (s: string) =>
   s
     .replace(/^import .*$/gm, ' ')
+    // Maths markup ($...$, $$...$$) would add words like "frac" and "sqrt".
+    .replace(/\$\$[\s\S]*?\$\$/g, ' ')
+    .replace(/\$[^$\n]*\$/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[#*_`>{}[\]()]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -42,6 +45,7 @@ export async function GET() {
     getCoursesByTerm(),
   ]);
   const [uiuc, school] = education;
+  const reading = books.filter((b) => b.data.reading);
 
   const termNote = (courses: (typeof terms)[number]['courses']) => {
     const statuses = new Set(courses.map((c) => c.data.status));
@@ -61,8 +65,8 @@ export async function GET() {
       id: 'study',
       title: 'Education',
       url: '/about',
-      answer: `I'm doing a Bachelor of Science in Computer Science at the ${uiuc.title} (${year(uiuc.start)}–${year(uiuc.end)}), with an intended Math minor.`,
-      keywords: ['study', 'major', 'minor', 'degree', 'university', 'college', 'school', 'uiuc', 'illinois', 'urbana', 'champaign', 'education', 'year', 'graduate', 'graduation', 'student', 'freshman', 'computer science', 'math', 'siebel'],
+      answer: `I'm doing a Bachelor of Science in Computer Science at the ${uiuc.title} (${year(uiuc.start)}–${year(uiuc.end)}), with an intended Maths minor.`,
+      keywords: ['study', 'major', 'minor', 'degree', 'university', 'college', 'school', 'uiuc', 'illinois', 'urbana', 'champaign', 'education', 'year', 'graduate', 'graduation', 'student', 'freshman', 'computer science', 'math', 'maths', 'siebel'],
       text: `${bio.long[0]} ${uiuc.subtitle} ${uiuc.note ?? ''}`,
     },
     {
@@ -101,9 +105,17 @@ export async function GET() {
       id: 'about',
       title: 'About',
       url: '/about',
-      answer: bio.short.join(' '),
+      answer: bio.long.slice(0, 2).join(' '),
       keywords: ['who', 'about', 'yourself', 'bio', 'goal', 'quant', 'quantitative', 'research', 'trading', 'career', 'plan', 'future', 'aim'],
       text: bio.long.join(' '),
+    },
+    {
+      id: 'free-time',
+      title: 'Outside class',
+      url: '/',
+      answer: "At the moment I'm obsessed with the card game Wizard. I also read a lot; the bookshelf has what I'm reading now.",
+      keywords: ['wizard', 'card game', 'cards', 'game', 'games', 'play', 'obsessed', 'hobby', 'fun', 'free time', 'spare time', 'weekend'],
+      text: 'wizard card game reading books',
     },
     {
       id: 'currently',
@@ -222,7 +234,12 @@ export async function GET() {
       id: 'books',
       title: 'Bookshelf',
       url: '/bookshelf',
-      answer: `There are ${books.length} books on my bookshelf, favourites first.`,
+      answer: [
+        reading.length ? `Right now I'm reading ${list(reading.map((b) => b.data.title))}.` : '',
+        `There are ${books.length} books on my bookshelf.`,
+      ]
+        .filter(Boolean)
+        .join(' '),
       keywords: ['book', 'bookshelf', 'read', 'reading', 'recommend', 'recommendation', 'favourite', 'library'],
       text: books.map((b) => `${b.data.title} ${b.data.author}`).join(' '),
     },
@@ -254,7 +271,7 @@ export async function GET() {
       id: 'awards',
       title: 'Awards',
       url: '/about',
-      answer: awards.length ? `${list(awards.map((a) => `${a.data.title} (${a.data.issuer})`))}.` : 'Nothing listed yet.',
+      answer: awards.length ? `${awards.map((a) => a.data.title).join('; ')}.` : 'Nothing listed yet.',
       keywords: ['award', 'competition', 'contest', 'prize', 'olympiad', 'achievement', 'honor', 'honour'],
       text: awards.map((a) => `${a.data.title} ${a.data.issuer}`).join(' '),
     },
@@ -262,7 +279,7 @@ export async function GET() {
       id: `award-${a.id}`,
       title: a.data.title,
       url: '/about',
-      answer: `${a.data.title} (${a.data.issuer}), ${monthYear(a.data.date)}.${a.data.note ? ' ' + a.data.note : ''}`,
+      answer: `${a.data.title} (${a.data.issuer}), ${awardDate(a.data.date, a.data.precision)}.${a.data.note ? ' ' + a.data.note : ''}`,
       keywords: [a.data.issuer],
       text: `${a.data.title} ${a.data.issuer} ${a.data.note ?? ''}`,
     })),

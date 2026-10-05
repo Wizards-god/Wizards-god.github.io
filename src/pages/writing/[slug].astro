@@ -4,6 +4,7 @@ import ReadingLayout from '../../layouts/ReadingLayout.astro';
 import Icon from '../../components/Icon.astro';
 import { getPosts, postUrl } from '../../lib/content';
 import { fullDate, isoDate, readingTime } from '../../lib/format';
+import { articleJsonLd } from '../../lib/seo';
 
 export async function getStaticPaths() {
   const posts = await getPosts();
@@ -33,6 +34,9 @@ const minutes = readingTime(post.body ?? '');
   type="article"
   published={d.date}
   modified={d.updated}
+  jsonLd={[
+    articleJsonLd({ title: d.title, summary: d.summary, date: d.date, updated: d.updated, url: postUrl(post), image: `/og/writing/${post.id}.png` }),
+  ]}
   back={{ href: '/writing', label: 'all writing' }}
 >
   <Fragment slot="header">

@@ -1,6 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
-import { monthYear, isoDate } from '../lib/format';
+import { awardDate, isoDate } from '../lib/format';
 import PlaceholderTag from './PlaceholderTag.astro';
 
 interface Props {
@@ -13,8 +13,8 @@ const { awards } = Astro.props;
   {
     awards.map((a) => (
       <li class="award" data-reveal>
-        <time class="award__date" datetime={isoDate(a.data.date)}>
-          {monthYear(a.data.date)}
+        <time class="award__date" datetime={a.data.precision === 'year' ? awardDate(a.data.date, 'year') : isoDate(a.data.date)}>
+          {awardDate(a.data.date, a.data.precision)}
         </time>
         <div class="award__body">
           <p class="award__title">

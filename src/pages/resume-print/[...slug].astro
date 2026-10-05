@@ -8,7 +8,7 @@ import PlaceholderTag from '../../components/PlaceholderTag.astro';
 import { site } from '../../data/site';
 import { education, skills } from '../../data/about';
 import { getExperience, getProjects, getAwards, getCoursesByTerm, projectUrl } from '../../lib/content';
-import { dateRange, monthYear } from '../../lib/format';
+import { awardDate, dateRange, monthYear } from '../../lib/format';
 
 export function getStaticPaths() {
   return process.env.RESUME_PRINT === '1' ? [{ params: { slug: undefined } }] : [];
@@ -166,7 +166,7 @@ const uiuc = education[0];
                   <p class="entry__title">
                     {a.data.title} <PlaceholderTag show={a.data.placeholder} />
                   </p>
-                  <p class="entry__date">{monthYear(a.data.date)}</p>
+                  <p class="entry__date">{awardDate(a.data.date, a.data.precision)}</p>
                 </div>
                 <p class="entry__sub">{a.data.issuer}</p>
               </div>

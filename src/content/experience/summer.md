@@ -1,5 +1,5 @@
 ---
-company: Summer program
+company: Summer programme
 role: Participant
 location: Remote
 start: 2026-06

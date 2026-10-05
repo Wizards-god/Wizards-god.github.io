@@ -18,21 +18,23 @@ export interface CurrentlyItem {
 }
 
 export const bio = {
+  // Home page "About me". The major and the quant goal live on /about instead.
   short: [
-    "I'm a first-year Computer Science student at the University of Illinois Urbana-Champaign (Class of 2030), with an intended minor in Math.",
-    "I'm working toward quantitative research and trading, so most of what I build and read sits where probability, algorithms and fast, careful code meet.",
+    "There's a lot happening in tech right now, from AI and space to VR and clean energy, and more ideas around than anyone could build. The hard part is turning one into something real, and that's what I'm trying to get better at.",
+    "I'm a student, so mostly I'm here to learn: about myself, about other people and about how the world works, and hopefully find ways to make it a bit better as I go.",
   ],
   long: [
-    "I'm Parjanya. I'm studying for a Bachelor of Science in Computer Science in the Siebel School of Computing and Data Science at the University of Illinois Urbana-Champaign, with an intended Math minor. I started in August 2026 and expect to graduate in May 2030.",
-    "The goal is quantitative research. That means getting genuinely good at probability and statistics, at algorithms and systems, and at the unglamorous habit of checking my own work. This site is where I keep the evidence: projects with honest write-ups, notes from courses, and the occasional longer post.",
-    "This site isn't built from a template, which made it a good excuse to learn how all the pieces fit together. If you're curious how the intro works, there's a short write-up about it.",
+    "I'm Parjanya. I'm studying for a Bachelor of Science in Computer Science in the Siebel School of Computing and Data Science at the University of Illinois Urbana-Champaign, with an intended Maths minor. I started in August 2026 and should graduate in May 2030.",
+    "I want to end up in quantitative research. For now that means getting properly good at probability and statistics, algorithms and systems, and getting into the habit of double-checking my work. I build software to explore algorithms, simulation, probability and quantitative systems, and this site is where I put it: projects with write-ups of what worked and what didn't, notes from my courses, and the odd longer post.",
+    "There's a lot happening in tech right now, from AI and space exploration to VR and clean energy, and far more ideas around than anyone could build. The hard part is turning one into something real. As a student, my main goal is to learn about myself, about other people and about how the world works, so that I can find ways to make it a bit better.",
+    "I designed this site from scratch, which was a good excuse to learn how all the pieces fit together. If you're curious how the intro works, there's a short write-up about it.",
   ],
 };
 
 export const education: TimelineItem[] = [
   {
     title: 'University of Illinois Urbana-Champaign',
-    subtitle: 'Bachelor of Science in Computer Science · intended Math minor',
+    subtitle: 'Bachelor of Science in Computer Science · intended Maths minor',
     start: '2026-08',
     end: '2030-05',
     note: 'Siebel School of Computing and Data Science.',
@@ -48,11 +50,11 @@ export const education: TimelineItem[] = [
 
 // Dated: the build warns when this is more than 90 days old.
 export const currently = {
-  updated: '2026-09-29',
+  updated: '2026-10-04',
   items: [
     { label: 'building', text: 'this site, parjanya.me', href: '/projects/parjanya-me' },
     { label: 'learning', text: 'something new; more on this soon', placeholder: true },
-    { label: 'reading', text: "a book I'll add here soon", href: '/bookshelf', placeholder: true },
+    { label: 'reading', text: "Surely You're Joking, Mr. Feynman! and The Three-Body Problem", href: '/bookshelf' },
   ] as CurrentlyItem[],
 };
 
@@ -70,7 +72,7 @@ export const skills = {
   groups: [
     { label: 'Languages', items: ['Python', 'C++', 'TypeScript', 'HTML/CSS'] },
     { label: 'Tools', items: ['Git', 'Linux', 'Astro'] },
-    { label: 'Math', items: ['Probability', 'Linear algebra', 'Calculus'] },
+    { label: 'Maths', items: ['Probability', 'Linear algebra', 'Calculus'] },
   ],
   placeholder: true,
 };
