@@ -1,12 +1,18 @@
 ---
-// Intro overlay. Hidden unless the head script set html.intro-active.
-// Letters are pre-generated outlines (scripts/generate-intro-glyphs.mjs).
-import { introGlyphs as G } from '../data/intro-glyphs';
+// The intro overlay. It stays hidden unless the head script decided this visit
+// plays the intro (html.intro-active); scripts/intro.ts runs the animation.
+// The letters are outlines made at build time by scripts/generate-intro-glyphs.mjs.
+import { introGlyphs } from '../data/intro-glyphs';
 import { site } from '../data/site';
 
-const { viewBox: vb, letters, period, counter } = G;
-const R = 100000;
-const rect = `M${-R} ${-R}H${R}V${R}H${-R}Z`;
+const { viewBox, letters, period: fullStop, counter } = introGlyphs;
+
+// A rectangle far bigger than any screen: the overlay's solid background.
+// scripts/intro.ts later adds the counter to this path to cut the hole. The
+// last path, .intro__counter, is an invisible copy of the hole that the script
+// uses to measure how far to zoom.
+const HUGE = 100000;
+const screenCover = `M${-HUGE} ${-HUGE}H${HUGE}V${HUGE}H${-HUGE}Z`;
 ---
 
 <div
@@ -18,17 +24,21 @@ const rect = `M${-R} ${-R}H${R}V${R}H${-R}Z`;
 >
   <svg
     class="intro__svg"
-    viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
-    style={`--word-w: ${vb.w / G.upm}`}
+    viewBox={`${viewBox.x} ${viewBox.y} ${viewBox.w} ${viewBox.h}`}
+    style={`--word-w: ${viewBox.w / introGlyphs.upm}`}
     focusable="false"
   >
     <g data-intro-zoom>
-      <path class="intro__bg" data-intro-bg fill-rule="evenodd" d={rect}></path>
+      <path class="intro__bg" data-intro-bg fill-rule="evenodd" d={screenCover}></path>
       <!-- Covers the hole in the "a"; fades out as the zoom starts so the site shows through gradually. -->
       <path class="intro__cover" data-intro-cover d={counter.d}></path>
       <g class="intro__ink" data-intro-ink>
-        {letters.map((l, i) => <path class:list={['intro__letter', { 'is-on': i === 0 }]} data-intro-letter d={l.d} />)}
-        <path class="intro__period" data-intro-period d={period.d} transform={`translate(${period.x[0]} 0)`}></path>
+        {
+          letters.map((letter, index) => (
+            <path class:list={['intro__letter', { 'is-on': index === 0 }]} data-intro-letter d={letter.d} />
+          ))
+        }
+        <path class="intro__period" data-intro-period d={fullStop.d} transform={`translate(${fullStop.x[0]} 0)`}></path>
       </g>
       <path class="intro__counter" data-intro-counter d={counter.d}></path>
     </g>

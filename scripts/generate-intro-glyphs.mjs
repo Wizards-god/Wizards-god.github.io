@@ -1,148 +1,165 @@
-// Build step: turns the word "parjanya." into SVG outlines so the intro can
+// Build step: turns the word "parjanya." into SVG outlines, so the intro can
 // paint on the very first frame without waiting for a web font.
 //
-// Outputs
-//   src/data/intro-glyphs.ts  letter paths, full-stop caret positions, and the
-//                             counter (inner contour) of the second "a"
-//   public/favicon.svg        "p." mark
+// Writes
+//   src/data/intro-glyphs.ts  the letter paths, where the full stop sits after
+//                             each letter, and the counter (the hole) of the
+//                             second "a"
+//   public/favicon.svg        the "p." mark
 //   public/favicon-32.png, public/apple-touch-icon.png
 //
-// Run: node scripts/generate-intro-glyphs.mjs  (also runs as `prebuild`)
+// Run: node scripts/generate-intro-glyphs.mjs  (it also runs as `prebuild`)
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import opentype from 'opentype.js';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const fontPath = join(root, 'node_modules/geist/dist/fonts/geist-sans/Geist-Medium.ttf');
+const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const fontPath = join(projectRoot, 'node_modules/geist/dist/fonts/geist-sans/Geist-Medium.ttf');
 
 const WORD = 'parjanya';
-const COUNTER_INDEX = 4; // the second "a" in "parjanya."
+const COUNTER_LETTER = 4; // index of the second "a" in "parjanya"
 
-const buf = readFileSync(fontPath);
-const font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-const upm = font.unitsPerEm;
+const fontFile = readFileSync(fontPath);
+const font = opentype.parse(fontFile.buffer.slice(fontFile.byteOffset, fontFile.byteOffset + fontFile.byteLength));
+const unitsPerEm = font.unitsPerEm;
 
-const round = (n) => Math.round(n * 10) / 10;
+const roundToTenth = (value) => Math.round(value * 10) / 10;
 
-/** Split an opentype.js Path into one Path per contour (subpath). */
-function splitContours(path) {
-  const out = [];
-  let cur = null;
-  for (const cmd of path.commands) {
-    if (cmd.type === 'M') {
-      cur = new opentype.Path();
-      out.push(cur);
+/** Splits an opentype.js path into one path per contour (every "M" starts a new one). */
+function splitIntoContours(path) {
+  const contours = [];
+  let current = null;
+  for (const command of path.commands) {
+    if (command.type === 'M') {
+      current = new opentype.Path();
+      contours.push(current);
     }
-    cur.commands.push(cmd);
+    current.commands.push(command);
   }
-  return out;
+  return contours;
 }
 
-const glyphs = font.stringToGlyphs(WORD);
-const dot = font.charToGlyph('.');
+const letterGlyphs = font.stringToGlyphs(WORD);
+const fullStopGlyph = font.charToGlyph('.');
 
-// Lay out the word with advance widths plus pair kerning. Composite glyphs
-// (e.g. "j" = dotless j + dot) are decomposed by getPath().
+// ---- Lay out the word ----------------------------------------------------
+// Each letter goes where the previous one's advance width (plus kerning for
+// that pair) leaves off. getPath() also takes apart composite glyphs, like
+// the "j", which is a dotless j plus a dot.
 const letters = [];
-let x = 0;
-glyphs.forEach((g, i) => {
-  const path = g.getPath(x, 0, upm);
-  letters.push({ char: WORD[i], x: round(x), glyph: g, path });
-  const next = glyphs[i + 1];
-  x += g.advanceWidth + (next ? font.getKerningValue(g, next) : 0);
+let penX = 0;
+letterGlyphs.forEach((glyph, index) => {
+  const path = glyph.getPath(penX, 0, unitsPerEm);
+  letters.push({ char: WORD[index], x: roundToTenth(penX), glyph, path });
+  const nextGlyph = letterGlyphs[index + 1];
+  penX += glyph.advanceWidth + (nextGlyph ? font.getKerningValue(glyph, nextGlyph) : 0);
 });
 
-// Where the full stop sits after k typed letters (k = 1..8): right after the
-// last typed letter, kerned against it, so it rides along like a caret.
-const periodX = letters.map((l) => round(l.x + l.glyph.advanceWidth + font.getKerningValue(l.glyph, dot)));
-const periodPath = dot.getPath(0, 0, upm);
-const finalPeriod = dot.getPath(periodX[periodX.length - 1], 0, upm);
+// Where the full stop sits once k letters are typed (k = 1..8): right after
+// the last one, kerned against it, so it rides along like a cursor.
+const fullStopPositions = letters.map((letter) =>
+  roundToTenth(letter.x + letter.glyph.advanceWidth + font.getKerningValue(letter.glyph, fullStopGlyph)),
+);
+const fullStopPath = fullStopGlyph.getPath(0, 0, unitsPerEm);
+const finalFullStop = fullStopGlyph.getPath(fullStopPositions[fullStopPositions.length - 1], 0, unitsPerEm);
 
-// Counter of the second "a": the contour with the smaller bounding box.
-const aContours = splitContours(letters[COUNTER_INDEX].path)
-  .map((p) => ({ p, bb: p.getBoundingBox() }))
-  .map((c) => ({ ...c, area: (c.bb.x2 - c.bb.x1) * (c.bb.y2 - c.bb.y1) }))
+// ---- The counter ---------------------------------------------------------
+// The second "a" has two contours, the outside and the hole. The hole is the
+// one with the smaller bounding box.
+const contoursBySize = splitIntoContours(letters[COUNTER_LETTER].path)
+  .map((contour) => ({ contour, box: contour.getBoundingBox() }))
+  .map((entry) => ({ ...entry, area: (entry.box.x2 - entry.box.x1) * (entry.box.y2 - entry.box.y1) }))
   .sort((a, b) => a.area - b.area);
-if (aContours.length < 2) throw new Error('Expected the "a" to have an inner contour');
-const counter = aContours[0];
-const cbb = counter.bb;
+if (contoursBySize.length < 2) throw new Error('Expected the "a" to have an inner contour');
+const counter = contoursBySize[0];
+const counterBox = counter.box;
 
-// Ink bounds of the whole word (including the final full stop).
-const bbs = [...letters.map((l) => l.path.getBoundingBox()), finalPeriod.getBoundingBox()];
-const ink = {
-  x1: Math.min(...bbs.map((b) => b.x1)),
-  y1: Math.min(...bbs.map((b) => b.y1)),
-  x2: Math.max(...bbs.map((b) => b.x2)),
-  y2: Math.max(...bbs.map((b) => b.y2)),
+// ---- Bounds --------------------------------------------------------------
+// Everything that has ink, including the final full stop, plus some padding.
+const boxes = [...letters.map((letter) => letter.path.getBoundingBox()), finalFullStop.getBoundingBox()];
+const inkBounds = {
+  x1: Math.min(...boxes.map((box) => box.x1)),
+  y1: Math.min(...boxes.map((box) => box.y1)),
+  x2: Math.max(...boxes.map((box) => box.x2)),
+  y2: Math.max(...boxes.map((box) => box.y2)),
 };
-const pad = 40;
+const PADDING = 40;
 const viewBox = {
-  x: round(ink.x1 - pad),
-  y: round(ink.y1 - pad),
-  w: round(ink.x2 - ink.x1 + pad * 2),
-  h: round(ink.y2 - ink.y1 + pad * 2),
+  x: roundToTenth(inkBounds.x1 - PADDING),
+  y: roundToTenth(inkBounds.y1 - PADDING),
+  w: roundToTenth(inkBounds.x2 - inkBounds.x1 + PADDING * 2),
+  h: roundToTenth(inkBounds.y2 - inkBounds.y1 + PADDING * 2),
 };
 
-const data = {
+// ---- Write src/data/intro-glyphs.ts --------------------------------------
+const glyphData = {
   font: 'Geist Medium',
-  upm,
+  upm: unitsPerEm,
   viewBox,
-  letters: letters.map((l) => ({ char: l.char, d: l.path.toPathData(1) })),
-  period: { d: periodPath.toPathData(1), x: periodX },
+  letters: letters.map((letter) => ({ char: letter.char, d: letter.path.toPathData(1) })),
+  period: { d: fullStopPath.toPathData(1), x: fullStopPositions },
   counter: {
-    index: COUNTER_INDEX,
-    d: counter.p.toPathData(1),
-    cx: round((cbb.x1 + cbb.x2) / 2),
-    cy: round((cbb.y1 + cbb.y2) / 2),
-    w: round(cbb.x2 - cbb.x1),
-    h: round(cbb.y2 - cbb.y1),
+    index: COUNTER_LETTER,
+    d: counter.contour.toPathData(1),
+    cx: roundToTenth((counterBox.x1 + counterBox.x2) / 2),
+    cy: roundToTenth((counterBox.y1 + counterBox.y2) / 2),
+    w: roundToTenth(counterBox.x2 - counterBox.x1),
+    h: roundToTenth(counterBox.y2 - counterBox.y1),
   },
 };
 
-const ts = `// Generated by scripts/generate-intro-glyphs.mjs from ${data.font}. Do not edit by hand.
-// Units are font units (${upm}/em), y grows downward, baseline at y = 0.
+const moduleSource = `// Generated by scripts/generate-intro-glyphs.mjs from ${glyphData.font}. Do not edit by hand.
+// Units are font units (${unitsPerEm}/em), y grows downward, baseline at y = 0.
 
-export const introGlyphs = ${JSON.stringify(data, null, 2)} as const;
+export const introGlyphs = ${JSON.stringify(glyphData, null, 2)} as const;
 `;
-mkdirSync(join(root, 'src/data'), { recursive: true });
-writeFileSync(join(root, 'src/data/intro-glyphs.ts'), ts);
+mkdirSync(join(projectRoot, 'src/data'), { recursive: true });
+writeFileSync(join(projectRoot, 'src/data/intro-glyphs.ts'), moduleSource);
 
-// ---- Favicons: "p." on charcoal, full stop in the accent colour ----------
-const p = glyphs[0].getPath(0, 0, upm);
-const pb = p.getBoundingBox();
-const pDot = dot.getPath(glyphs[0].advanceWidth + font.getKerningValue(glyphs[0], dot), 0, upm);
-const db = pDot.getBoundingBox();
-const markW = db.x2 - pb.x1;
-const markCx = pb.x1 + markW / 2;
-const markCy = -272; // middle of the x-height band
-const scale = 0.62; // mark height relative to the tile
-const tile = 1000;
-const s = (tile * scale) / (pb.y2 - pb.y1);
-const tx = tile / 2 - markCx * s;
-const ty = tile / 2 - markCy * s + 60;
-const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tile} ${tile}">
-<rect width="${tile}" height="${tile}" rx="220" fill="#1c1c1b"/>
-<g transform="translate(${round(tx)} ${round(ty)}) scale(${s.toFixed(4)})">
-<path fill="#ebe9e4" d="${p.toPathData(1)}"/>
-<path fill="#c6a15e" d="${pDot.toPathData(1)}"/>
+// ---- Favicons: "p." on charcoal, with the full stop in the accent colour --
+const pPath = letterGlyphs[0].getPath(0, 0, unitsPerEm);
+const pBox = pPath.getBoundingBox();
+const markFullStop = fullStopGlyph.getPath(
+  letterGlyphs[0].advanceWidth + font.getKerningValue(letterGlyphs[0], fullStopGlyph),
+  0,
+  unitsPerEm,
+);
+const fullStopBox = markFullStop.getBoundingBox();
+
+const markWidth = fullStopBox.x2 - pBox.x1;
+const markCentreX = pBox.x1 + markWidth / 2;
+const markCentreY = -272; // middle of the x-height band
+const MARK_HEIGHT = 0.62; // how much of the tile the "p" fills, top to bottom
+const TILE = 1000;
+const markScale = (TILE * MARK_HEIGHT) / (pBox.y2 - pBox.y1);
+const offsetX = TILE / 2 - markCentreX * markScale;
+const offsetY = TILE / 2 - markCentreY * markScale + 60;
+
+const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TILE} ${TILE}">
+<rect width="${TILE}" height="${TILE}" rx="220" fill="#1c1c1b"/>
+<g transform="translate(${roundToTenth(offsetX)} ${roundToTenth(offsetY)}) scale(${markScale.toFixed(4)})">
+<path fill="#ebe9e4" d="${pPath.toPathData(1)}"/>
+<path fill="#c6a15e" d="${markFullStop.toPathData(1)}"/>
 </g>
 </svg>
 `;
-writeFileSync(join(root, 'public/favicon.svg'), favicon);
+writeFileSync(join(projectRoot, 'public/favicon.svg'), faviconSvg);
 
 try {
   const sharp = (await import('sharp')).default;
-  const svgBuf = Buffer.from(favicon);
-  await sharp(svgBuf, { density: 300 }).resize(32, 32).png().toFile(join(root, 'public/favicon-32.png'));
-  // Apple touch icons get their own rounding, so use a square tile.
-  const square = favicon.replace('rx="220"', 'rx="0"');
-  await sharp(Buffer.from(square), { density: 300 }).resize(180, 180).png().toFile(join(root, 'public/apple-touch-icon.png'));
-} catch (err) {
-  console.warn('[glyphs] skipped PNG favicons:', err.message);
+  await sharp(Buffer.from(faviconSvg), { density: 300 }).resize(32, 32).png().toFile(join(projectRoot, 'public/favicon-32.png'));
+  // Apple rounds the corners of touch icons itself, so that one gets a square tile.
+  const squareSvg = faviconSvg.replace('rx="220"', 'rx="0"');
+  await sharp(Buffer.from(squareSvg), { density: 300 })
+    .resize(180, 180)
+    .png()
+    .toFile(join(projectRoot, 'public/apple-touch-icon.png'));
+} catch (error) {
+  console.warn('[glyphs] skipped PNG favicons:', error.message);
 }
 
 console.log(
-  `[glyphs] ${WORD}. → src/data/intro-glyphs.ts  (counter ${data.counter.w}×${data.counter.h} units at ${data.counter.cx},${data.counter.cy})`,
+  `[glyphs] ${WORD}. → src/data/intro-glyphs.ts  (counter ${glyphData.counter.w}×${glyphData.counter.h} units at ${glyphData.counter.cx},${glyphData.counter.cy})`,
 );

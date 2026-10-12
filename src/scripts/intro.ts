@@ -1,215 +1,280 @@
-// Intro: "p." → types "parjanya." → zooms through the counter of the second "a".
-// Loaded with a dynamic import, only on the visits where it plays.
+// The intro: a "p." types itself out into "parjanya.", and then the page zooms
+// straight through the hole in the second "a", with the site waiting on the
+// other side.
 //
-// The overlay markup (components/Intro.astro) is pre-rendered SVG outlines,
-// so it paints on the first frame with no web font.
+// main.ts only imports this file on the visits where the intro actually plays.
+// The overlay (components/Intro.astro) is SVG outlines of the letters made at
+// build time, so it's on screen from the very first frame, no web font needed.
 
-import { introGlyphs as G } from '../data/intro-glyphs';
-import { html, wait, dur, emit } from './motion';
+import { introGlyphs } from '../data/intro-glyphs';
+import { html, wait, dur } from './motion';
 import { pageRevealed } from './page';
 
-interface IntroConfig {
+interface IntroSettings {
+  /** Keep the intro up at least this long, even if the page is ready sooner. */
   minMs: number;
+  /** Never wait longer than this for the page to finish loading. */
   maxWaitMs: number;
 }
 
-const HOLE_R = 100000;
-const RECT = `M${-HOLE_R} ${-HOLE_R}H${HOLE_R}V${HOLE_R}H${-HOLE_R}Z`;
+const LETTER_DELAY_MS = 60; // time between typed letters...
+const LETTER_JITTER_MS = 30; // ...plus up to this much, so it doesn't feel robotic
+const PAUSE_BEFORE_ZOOM_MS = 300;
+const ZOOM_MS = 1100;
+const QUICK_ZOOM_MS = 350; // after a click or key press
 
-/** Ease-in on the exponent: starts gently, then accelerates through the letter. */
+/** Cubic ease-in. The zoom starts gently and then speeds up through the letter. */
 const easeIn = (t: number) => t * t * t;
 
-/** 0 → 1 between a and b, with eased ends (smoothstep). */
-const smooth = (a: number, b: number, t: number) => {
-  const x = Math.min(1, Math.max(0, (t - a) / (b - a)));
+/** Goes from 0 to 1 as `value` moves from `start` to `end`, with soft ends. */
+function smoothstep(start: number, end: number, value: number) {
+  const x = Math.min(1, Math.max(0, (value - start) / (end - start)));
   return x * x * (3 - 2 * x);
-};
+}
 
-function pageLoaded() {
-  const load =
+/** Resolves once the page has loaded and the web fonts are ready. */
+function pageReady() {
+  const loaded =
     document.readyState === 'complete'
       ? Promise.resolve()
-      : new Promise<void>((r) => addEventListener('load', () => r(), { once: true }));
-  const fonts = document.fonts?.ready.then(() => undefined) ?? Promise.resolve();
-  const hero = document.querySelector<HTMLImageElement>('[data-hero-image]');
-  const img = hero?.decode ? hero.decode().catch(() => undefined) : Promise.resolve();
-  return Promise.all([load, fonts, img]);
+      : new Promise<void>((resolve) => addEventListener('load', () => resolve(), { once: true }));
+  const fontsReady = document.fonts?.ready.then(() => undefined) ?? Promise.resolve();
+  return Promise.all([loaded, fontsReady]);
 }
 
-function makePoint(svg: SVGSVGElement, x: number, y: number): DOMPointInit {
-  if (typeof DOMPoint === 'function') return new DOMPoint(x, y);
-  const p = svg.createSVGPoint();
-  p.x = x;
-  p.y = y;
-  return p;
+/**
+ * Any click, tap or key press skips ahead to a quicker version of the zoom.
+ * Once the zoom has started there's nothing left to skip, so input is ignored.
+ */
+function listenForSkip() {
+  let skipped = false;
+  let zooming = false;
+  let resolveSkip = () => {};
+  const skipRequested = new Promise<void>((resolve) => (resolveSkip = resolve));
+
+  const onInput = (event: Event) => {
+    // Let keyboard shortcuts (Ctrl+R and friends) through without skipping.
+    if (event instanceof KeyboardEvent && (event.metaKey || event.ctrlKey || event.altKey)) return;
+    if (zooming) return;
+    skipped = true;
+    resolveSkip();
+  };
+  addEventListener('pointerdown', onInput, true);
+  addEventListener('keydown', onInput, true);
+
+  return {
+    skipRequested,
+    get skipped() {
+      return skipped;
+    },
+    zoomStarted() {
+      zooming = true;
+    },
+    stopListening() {
+      removeEventListener('pointerdown', onInput, true);
+      removeEventListener('keydown', onInput, true);
+    },
+  };
 }
 
-export async function runIntro(cfg: IntroConfig) {
-  (window as unknown as { __introStarted?: boolean }).__introStarted = true;
+export async function runIntro(settings: IntroSettings) {
   const overlay = document.getElementById('intro');
   const svg = overlay?.querySelector<SVGSVGElement>('svg');
   if (!overlay || !svg) return finish(null);
 
   const zoomGroup = svg.querySelector<SVGGElement>('[data-intro-zoom]')!;
-  const bg = svg.querySelector<SVGPathElement>('[data-intro-bg]')!;
+  const background = svg.querySelector<SVGPathElement>('[data-intro-bg]')!;
   const ink = svg.querySelector<SVGGElement>('[data-intro-ink]')!;
   const letters = [...svg.querySelectorAll<SVGPathElement>('[data-intro-letter]')];
-  const period = svg.querySelector<SVGPathElement>('[data-intro-period]')!;
-  const cover = svg.querySelector<SVGPathElement>('[data-intro-cover]');
+  const fullStop = svg.querySelector<SVGPathElement>('[data-intro-period]')!;
+  const holeCover = svg.querySelector<SVGPathElement>('[data-intro-cover]');
   const counter = svg.querySelector<SVGPathElement>('[data-intro-counter]')!;
   const main = document.getElementById('main');
-  const reduced = html.classList.contains('intro-reduced');
-  const { cx, cy } = G.counter;
+  const reducedMotion = html.classList.contains('intro-reduced');
 
-  let skipped = false;
-  let zooming = false;
-  let onSkipResolve: () => void = () => {};
-  const skipSignal = new Promise<void>((r) => (onSkipResolve = r));
-  const onSkip = (e: Event) => {
-    if (e instanceof KeyboardEvent && (e.metaKey || e.ctrlKey || e.altKey)) return;
-    if (zooming) return;
-    skipped = true;
-    onSkipResolve();
-  };
-  addEventListener('pointerdown', onSkip, true);
-  addEventListener('keydown', onSkip, true);
+  // The point we zoom into: the middle of the hole in the second "a".
+  const { cx: centreX, cy: centreY } = introGlyphs.counter;
 
-  let holeAdded = false;
-  const addHole = () => {
-    if (holeAdded) return;
-    holeAdded = true;
-    bg.setAttribute('d', `${RECT} ${G.counter.d}`);
-    overlay.classList.add('has-hole');
-  };
+  const skip = listenForSkip();
 
-  const setTyped = (n: number) => {
-    letters.forEach((l, i) => l.classList.toggle('is-on', i < n));
-    period.setAttribute('transform', `translate(${G.period.x[n - 1]} 0)`);
-  };
+  /** Shows the first `count` letters, with the full stop riding along after them like a cursor. */
+  function showLetters(count: number) {
+    letters.forEach((letter, index) => letter.classList.toggle('is-on', index < count));
+    fullStop.setAttribute('transform', `translate(${introGlyphs.period.x[count - 1]} 0)`);
+  }
 
-  const typeIn = async () => {
-    period.classList.add('is-typing');
-    for (let n = 2; n <= letters.length; n++) {
-      if (skipped) break;
-      await Promise.race([wait(dur(60 + Math.random() * 30)), skipSignal]);
-      if (skipped) break;
-      setTyped(n);
+  async function typeName() {
+    fullStop.classList.add('is-typing');
+    for (let count = 2; count <= letters.length; count++) {
+      if (skip.skipped) break;
+      await Promise.race([wait(dur(LETTER_DELAY_MS + Math.random() * LETTER_JITTER_MS)), skip.skipRequested]);
+      if (skip.skipped) break;
+      showLetters(count);
     }
-  };
+  }
 
-  /** Smallest scale at which all four viewport corners sit inside the counter, ×1.1. */
-  const targetScale = () => {
-    const w = innerWidth;
-    const h = innerHeight;
-    const ctm = zoomGroup.getScreenCTM();
-    const bb = counter.getBBox();
-    const fallback = () => {
-      const k = ctm ? ctm.a : 1;
-      return Math.sqrt((w / (bb.width * k)) ** 2 + (h / (bb.height * k)) ** 2) * 1.35;
+  let holeCut = false;
+
+  /**
+   * Cuts the counter out of the background, so the page shows through the "a".
+   * The background is one huge rectangle; adding the counter's outline to the
+   * same path (fill-rule="evenodd") turns it into a hole.
+   */
+  function cutHole() {
+    if (holeCut) return;
+    holeCut = true;
+    background.setAttribute('d', `${background.getAttribute('d')} ${introGlyphs.counter.d}`);
+    overlay!.classList.add('has-hole');
+  }
+
+  /**
+   * How far to zoom: just past the point where all four corners of the screen
+   * fit inside the counter, i.e. the hole covers everything. Screens are all
+   * different sizes, so this is found with a binary search, using
+   * isPointInFill to ask whether a corner lands inside the hole at a given scale.
+   */
+  function findZoomScale() {
+    const width = innerWidth;
+    const height = innerHeight;
+    const toScreen = zoomGroup.getScreenCTM();
+    const counterBox = counter.getBBox();
+
+    // Rough answer for browsers that can't do the exact one: scale until the
+    // counter's box is bigger than the screen's diagonal, with some margin.
+    const roughScale = () => {
+      const unitsToPixels = toScreen ? toScreen.a : 1;
+      return (
+        Math.sqrt((width / (counterBox.width * unitsToPixels)) ** 2 + (height / (counterBox.height * unitsToPixels)) ** 2) *
+        1.35
+      );
     };
-    if (!ctm || typeof counter.isPointInFill !== 'function') return fallback();
+    if (!toScreen || typeof counter.isPointInFill !== 'function') return roughScale();
+
     try {
-      const inv = ctm.inverse();
+      const toSvg = toScreen.inverse();
       const corners = [
         [0, 0],
-        [w, 0],
-        [0, h],
-        [w, h],
-      ].map(([x, y]) => new DOMPoint(x, y).matrixTransform(inv));
-      const inside = (s: number) =>
-        corners.every((p) => counter.isPointInFill(makePoint(svg, cx + (p.x - cx) / s, cy + (p.y - cy) / s)));
-      let lo = 1;
-      let hi = 2;
-      while (!inside(hi)) {
-        lo = hi;
-        hi *= 2;
-        if (hi > 1e5) return fallback();
+        [width, 0],
+        [0, height],
+        [width, height],
+      ].map(([x, y]) => new DOMPoint(x, y).matrixTransform(toSvg));
+
+      // At scale s a screen corner lines up with this point of the unzoomed word.
+      const coversScreen = (scale: number) =>
+        corners.every((corner) =>
+          counter.isPointInFill(new DOMPoint(centreX + (corner.x - centreX) / scale, centreY + (corner.y - centreY) / scale)),
+        );
+
+      // Double until we overshoot, then halve the gap 32 times.
+      let tooSmall = 1;
+      let bigEnough = 2;
+      while (!coversScreen(bigEnough)) {
+        tooSmall = bigEnough;
+        bigEnough *= 2;
+        if (bigEnough > 1e5) return roughScale();
       }
-      for (let i = 0; i < 32; i++) {
-        const mid = (lo + hi) / 2;
-        if (inside(mid)) hi = mid;
-        else lo = mid;
+      for (let step = 0; step < 32; step++) {
+        const middle = (tooSmall + bigEnough) / 2;
+        if (coversScreen(middle)) bigEnough = middle;
+        else tooSmall = middle;
       }
-      return hi * 1.1;
+      return bigEnough * 1.1; // a little past "only just covered"
     } catch {
-      return fallback();
+      return roughScale();
     }
-  };
+  }
 
-  const zoom = (ms: number) =>
-    new Promise<void>((resolve) => {
-      zooming = true;
-      addHole();
-      const sMax = targetScale();
-      const logMax = Math.log(sMax);
-      const D = dur(ms);
+  function zoomThroughLetter(durationMs: number) {
+    return new Promise<void>((resolve) => {
+      skip.zoomStarted();
+      cutHole();
+      const maxScale = findZoomScale();
+      const logMaxScale = Math.log(maxScale);
+      const duration = dur(durationMs);
 
-      // Depth cue: the page eases from 1.04 to 1 behind the counter.
+      // A bit of depth: the page behind the letter settles from 104% to 100%
+      // while we fly in, scaling from the point under the counter.
       if (main) {
-        const ctm = zoomGroup.getScreenCTM();
-        if (ctm) {
-          const o = new DOMPoint(cx, cy).matrixTransform(ctm);
-          main.style.transformOrigin = `${o.x}px ${o.y + scrollY}px`;
+        const toScreen = zoomGroup.getScreenCTM();
+        if (toScreen) {
+          const origin = new DOMPoint(centreX, centreY).matrixTransform(toScreen);
+          main.style.transformOrigin = `${origin.x}px ${origin.y + scrollY}px`;
         }
-        main.animate([{ transform: 'scale(1.04)' }, { transform: 'none' }], {
-          duration: D,
-          easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
-        }).finished.finally(() => (main.style.transformOrigin = ''));
+        main
+          .animate([{ transform: 'scale(1.04)' }, { transform: 'none' }], {
+            duration,
+            easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          })
+          .finished.finally(() => (main.style.transformOrigin = ''));
       }
 
-      const start = performance.now();
-      const frame = (now: number) => {
-        const t = Math.min(1, (now - start) / D);
-        const s = Math.exp(logMax * easeIn(t)); // log-space: s = sMax ** e(t)
-        zoomGroup.setAttribute('transform', `translate(${cx} ${cy}) scale(${s}) translate(${-cx} ${-cy})`);
-        // The hole starts opaque and turns see-through over the first ~40% of the zoom.
-        if (cover) cover.style.opacity = String(1 - smooth(0, 0.4, t));
-        // The letters fade to the background slowly, gone by ~70% of the zoom.
-        ink.style.opacity = String(1 - smooth(0.12, 0.7, t));
-        if (t < 1) requestAnimationFrame(frame);
+      const startTime = performance.now();
+      const drawFrame = (now: number) => {
+        const progress = Math.min(1, (now - startTime) / duration);
+
+        // Scaling straight from 1 to maxScale looks wrong: nearly all the motion
+        // happens in the first few frames and then it crawls. What your eye
+        // follows is the relative change in size, so the ease runs on the
+        // exponent instead: scale = maxScale ^ easeIn(progress).
+        const scale = Math.exp(logMaxScale * easeIn(progress));
+
+        // Writing the transform attribute (not CSS) makes the browser redraw
+        // crisp vector edges at every scale instead of stretching a bitmap.
+        zoomGroup.setAttribute(
+          'transform',
+          `translate(${centreX} ${centreY}) scale(${scale}) translate(${-centreX} ${-centreY})`,
+        );
+        // The hole starts out covered and turns see-through over the first 40% of the zoom...
+        if (holeCover) holeCover.style.opacity = String(1 - smoothstep(0, 0.4, progress));
+        // ...and the letters fade into the background, gone by about 70%.
+        ink.style.opacity = String(1 - smoothstep(0.12, 0.7, progress));
+
+        if (progress < 1) requestAnimationFrame(drawFrame);
         else resolve();
       };
-      requestAnimationFrame(frame);
+      requestAnimationFrame(drawFrame);
     });
+  }
 
-  // Reduced motion: no typing, just the word, then a short fade.
-  if (reduced) {
-    setTyped(letters.length);
-    period.classList.add('is-solid');
+  // With reduced motion there's no typing and no zoom: just the word, then a short fade.
+  if (reducedMotion) {
+    showLetters(letters.length);
+    fullStop.classList.add('is-solid');
   }
 
   try {
+    // Hold on the "p." until the page is ready (but not forever), or until a skip.
     await Promise.race([
-      Promise.all([wait(dur(cfg.minMs)), pageLoaded()]),
-      wait(dur(cfg.maxWaitMs)),
-      skipSignal,
+      Promise.all([wait(dur(settings.minMs)), pageReady()]),
+      wait(dur(settings.maxWaitMs)),
+      skip.skipRequested,
     ]);
 
-    if (reduced) {
-      await Promise.race([wait(400), skipSignal]);
+    if (reducedMotion) {
+      await Promise.race([wait(400), skip.skipRequested]);
       await overlay.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: 'forwards' }).finished;
       return;
     }
 
-    await typeIn();
-    setTyped(letters.length);
-    period.classList.remove('is-typing');
-    period.classList.add('is-solid');
-    if (!skipped) await Promise.race([wait(dur(300)), skipSignal]);
-    await zoom(skipped ? 350 : 1100);
+    await typeName();
+    showLetters(letters.length);
+    fullStop.classList.remove('is-typing');
+    fullStop.classList.add('is-solid');
+    if (!skip.skipped) await Promise.race([wait(dur(PAUSE_BEFORE_ZOOM_MS)), skip.skipRequested]);
+    await zoomThroughLetter(skip.skipped ? QUICK_ZOOM_MS : ZOOM_MS);
   } finally {
-    removeEventListener('pointerdown', onSkip, true);
-    removeEventListener('keydown', onSkip, true);
+    skip.stopListening();
     finish(overlay);
   }
 }
 
+/** Takes the overlay away and hands control back to the page. */
 function finish(overlay: HTMLElement | null) {
   overlay?.remove();
-  document.querySelectorAll<HTMLElement>('[data-intro-inert]').forEach((n) => {
-    n.inert = false;
-    n.removeAttribute('data-intro-inert');
+  // BaseLayout made the page inert while the intro covered it.
+  document.querySelectorAll<HTMLElement>('[data-intro-inert]').forEach((element) => {
+    element.inert = false;
+    element.removeAttribute('data-intro-inert');
   });
-  emit('intro:done');
   pageRevealed({ animateContent: false });
 }

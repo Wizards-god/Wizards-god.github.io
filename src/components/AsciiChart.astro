@@ -1,7 +1,9 @@
 ---
-// Decorative ASCII price chart: a fair random walk. The build draws a first
-// frame (so it shows without JavaScript); in the browser, scripts/ascii-chart.ts
-// re-seeds it with the current time in India and steps it every few seconds.
+// The ASCII price chart in the home page hero: a fair random walk. The first
+// frame is drawn here at build time, so there's a chart even without
+// JavaScript. In the browser, scripts/ascii-chart.ts re-seeds it with the time
+// in India and keeps it stepping every few seconds. The maths is in
+// lib/ascii-chart.ts.
 import { getEntry } from 'astro:content';
 import { randomWalk, plot, windowStats, changeLine } from '../lib/ascii-chart';
 import { buildDate } from '../lib/build-info';
@@ -9,27 +11,28 @@ import { isoDate } from '../lib/format';
 import { postUrl } from '../lib/content';
 import { site } from '../data/site';
 
-const seed = isoDate(buildDate);
-const { series } = randomWalk(seed);
-const rows = plot(series);
-const last = series[series.length - 1];
-const stats = windowStats(series);
-const pad = ' '.repeat(rows[0].label.length + 2);
+const buildSeed = isoDate(buildDate);
+const { series: prices } = randomWalk(buildSeed);
+const rows = plot(prices);
+const lastPrice = prices[prices.length - 1];
+const stats = windowStats(prices);
+// The footer starts where the chart's cells do, past the labels and the axis.
+const indent = ' '.repeat(rows[0].label.length + 2);
 
-// "→ why" links to the post about the chart, once it's published.
-const post = await getEntry('writing', site.chartPostSlug);
-const whyHref = post && !post.data.draft ? postUrl(post) : null;
+// "→ why" links to the post about the chart, but only once that post is published.
+const chartPost = await getEntry('writing', site.chartPostSlug);
+const whyHref = chartPost && !chartPost.data.draft ? postUrl(chartPost) : null;
 ---
 
 <figure class="ascii" data-enter style="--i: 6" data-ascii>
-  <pre class="ascii__pre" aria-hidden="true" data-ascii-pre><span class="ascii__head">PRJ · fair random walk · seed {seed}</span>
-{rows.map((r) => (
-  <>{r.label} {r.label.trim() ? '┤' : '│'}{r.cells}{r.last && <span class="ascii__last"> {last.toFixed(2)}</span>}{'\n'}</>
-))}<span class="ascii__head">{pad}{changeLine(stats)}</span>
-<span class="ascii__head">{pad}{stats.line2}</span></pre>
+  <pre class="ascii__pre" aria-hidden="true" data-ascii-pre><span class="ascii__head">PRJ · fair random walk · seed {buildSeed}</span>
+{rows.map((row) => (
+  <>{row.label} {row.label.trim() ? '┤' : '│'}{row.cells}{row.last && <span class="ascii__last"> {lastPrice.toFixed(2)}</span>}{'\n'}</>
+))}<span class="ascii__head">{indent}{changeLine(stats)}</span>
+<span class="ascii__head">{indent}{stats.line2}</span></pre>
   {
     whyHref && (
-      <p class="ascii__why" style={`padding-left: ${pad.length}ch`} data-ascii-why><a
+      <p class="ascii__why" style={`padding-left: ${indent.length}ch`} data-ascii-why><a
           href={whyHref}
           class="link link--underlined"><span aria-hidden="true">→ </span>why<span class="visually-hidden"
             >: how this chart works</span
