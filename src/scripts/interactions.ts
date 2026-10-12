@@ -1,191 +1,215 @@
-// Small global interactions: copy-to-clipboard (email and code blocks), the
-// toast, the wordmark name cycle, and the cycling "p." on the 404/resume pages.
+// Small things that work on every page: copy buttons (the email address and
+// code blocks), the little toast message, my name cycling through scripts when
+// you hover it in the header, and the cycling "p." on the 404, 429 and resume
+// pages.
 
 import { prefersReducedMotion, dur } from './motion';
 
-// ------------------------------------------------------------------ toast
+// ------------------------------------------------------------ toast
 
 let toastTimer = 0;
 
-export function toast(message: string) {
-  const el = document.querySelector<HTMLElement>('[data-toast]');
-  if (!el) return;
-  el.textContent = message;
-  el.classList.add('is-visible');
+/** Shows a short message at the bottom of the screen for two seconds. */
+function showToast(message: string) {
+  const toast = document.querySelector<HTMLElement>('[data-toast]');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.classList.add('is-visible');
   window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => el.classList.remove('is-visible'), dur(2000));
+  toastTimer = window.setTimeout(() => toast.classList.remove('is-visible'), dur(2000));
 }
 
-// ------------------------------------------------------------------- copy
+// ------------------------------------------------------------ copying
 
+/** Copies text to the clipboard. Returns whether it worked. */
 async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
-    document.body.append(ta);
-    ta.select();
-    let ok = false;
+    // Older browsers, or a page without clipboard permission: fall back to
+    // selecting a hidden textarea and using the old copy command.
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+    document.body.append(textarea);
+    textarea.select();
+    let copied = false;
     try {
-      ok = document.execCommand('copy');
+      copied = document.execCommand('copy');
     } catch {
-      ok = false;
+      copied = false;
     }
-    ta.remove();
-    return ok;
+    textarea.remove();
+    return copied;
   }
 }
 
-function initCopy() {
-  document.addEventListener('click', async (e) => {
-    const target = e.target as Element;
+function initCopyButtons() {
+  document.addEventListener('click', async (event) => {
+    const target = event.target as Element;
 
-    const emailBtn = target.closest<HTMLElement>('[data-copy-email]');
-    if (emailBtn) {
-      const ok = await copyText(emailBtn.dataset.copyEmail ?? '');
-      toast(ok ? 'Email copied to clipboard' : 'Copy failed. The address is ' + emailBtn.dataset.copyEmail);
+    const emailButton = target.closest<HTMLElement>('[data-copy-email]');
+    if (emailButton) {
+      const copied = await copyText(emailButton.dataset.copyEmail ?? '');
+      showToast(copied ? 'Email copied to clipboard' : 'Copy failed. The address is ' + emailButton.dataset.copyEmail);
       return;
     }
 
-    const codeBtn = target.closest<HTMLButtonElement>('[data-copy-code]');
-    if (codeBtn) {
-      const code = codeBtn.closest('.code-block')?.querySelector('pre code')?.textContent ?? '';
-      const ok = await copyText(code.replace(/\n$/, ''));
-      codeBtn.textContent = ok ? 'copied' : 'failed';
-      codeBtn.toggleAttribute('data-copied', ok);
-      toast(ok ? 'Code copied' : 'Copy failed');
+    const codeButton = target.closest<HTMLButtonElement>('[data-copy-code]');
+    if (codeButton) {
+      const code = codeButton.closest('.code-block')?.querySelector('pre code')?.textContent ?? '';
+      const copied = await copyText(code.replace(/\n$/, ''));
+      codeButton.textContent = copied ? 'copied' : 'failed';
+      codeButton.toggleAttribute('data-copied', copied);
+      showToast(copied ? 'Code copied' : 'Copy failed');
       window.setTimeout(() => {
-        codeBtn.textContent = 'copy';
-        codeBtn.removeAttribute('data-copied');
+        codeButton.textContent = 'copy';
+        codeButton.removeAttribute('data-copied');
       }, dur(2000));
     }
   });
 }
 
-// ------------------------------------------------------ name in four scripts
+// ------------------------------------------------------------ swapping text
 
-/** "parjanya" in English, Kannada, Telugu and Sanskrit (Devanagari). */
-export const NAMES = [
-  { text: 'parjanya', lang: 'en' },
-  { text: 'ಪರ್ಜನ್ಯ', lang: 'kn' },
-  { text: 'పర్జన్య', lang: 'te' },
-  { text: 'पर्जन्यः', lang: 'sa' },
-] as const;
+// The newest swap for each element. If an older swap finishes late, it checks
+// this and backs off instead of overwriting the newer text.
+const latestSwap = new WeakMap<HTMLElement, number>();
 
-// Latest swap per element; an older swap that finishes late must not win.
-const swaps = new WeakMap<HTMLElement, number>();
-
-/** Swap an element's text with a soft fade/slide (or instantly under reduced motion). */
-export async function crossfadeText(el: HTMLElement, text: string, lang: string, ms = 520) {
-  const gen = (swaps.get(el) ?? 0) + 1;
-  swaps.set(el, gen);
+/** Swaps an element's text with a soft fade and slide (or instantly with reduced motion). */
+async function crossfadeText(element: HTMLElement, text: string, lang: string, ms = 520) {
+  const swapNumber = (latestSwap.get(element) ?? 0) + 1;
+  latestSwap.set(element, swapNumber);
   if (prefersReducedMotion()) {
-    el.textContent = text;
-    el.lang = lang;
+    element.textContent = text;
+    element.lang = lang;
     return;
   }
+
   const half = dur(ms / 2);
-  await el
+  // The old text drifts up and fades out...
+  await element
     .animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-0.18em)' }], {
       duration: half,
       easing: 'cubic-bezier(0.4, 0, 1, 1)',
       fill: 'forwards',
     })
     .finished.catch(() => undefined);
-  if (swaps.get(el) !== gen) return;
-  el.textContent = text;
-  el.lang = lang;
-  const enter = el.animate([{ opacity: 0, transform: 'translateY(0.18em)' }, { opacity: 1, transform: 'none' }], {
+  if (latestSwap.get(element) !== swapNumber) return;
+
+  // ...and the new text rises into place.
+  element.textContent = text;
+  element.lang = lang;
+  const fadeIn = element.animate([{ opacity: 0, transform: 'translateY(0.18em)' }, { opacity: 1, transform: 'none' }], {
     duration: half,
     easing: 'cubic-bezier(0, 0, 0.2, 1)',
   });
-  el.getAnimations().forEach((a) => a !== enter && a.cancel());
-  await enter.finished.catch(() => undefined);
+  element.getAnimations().forEach((animation) => animation !== fadeIn && animation.cancel());
+  await fadeIn.finished.catch(() => undefined);
 }
 
-const HOLD = 1600; // ms each name stays before the next one fades in
+// ------------------------------------------------------------ my name in four scripts
+
+/** "parjanya" in English, Kannada, Telugu and Sanskrit (written in Devanagari). */
+const NAMES = [
+  { text: 'parjanya', lang: 'en' },
+  { text: 'ಪರ್ಜನ್ಯ', lang: 'kn' },
+  { text: 'పర్జన్య', lang: 'te' },
+  { text: 'पर्जन्यः', lang: 'sa' },
+] as const;
+
+const NAME_HOLD_MS = 1600; // how long each name stays before the next one fades in
 
 function initNameCycle() {
   let timer = 0;
-  let index = 0;
-  let active = false;
-  const mark = () => document.querySelector<HTMLElement>('[data-wordmark]');
-  const target = () => document.querySelector<HTMLElement>('[data-name-cycle]');
+  let current = 0; // index into NAMES
+  let cycling = false;
+  const findWordmark = () => document.querySelector<HTMLElement>('[data-wordmark]');
+  const findName = () => document.querySelector<HTMLElement>('[data-name-cycle]');
 
-  const step = async () => {
-    const t = target();
-    if (!active || !t) return;
-    index = (index + 1) % NAMES.length;
-    await crossfadeText(t, NAMES[index].text, NAMES[index].lang);
-    if (active) timer = window.setTimeout(step, dur(HOLD));
+  const showNextName = async () => {
+    const name = findName();
+    if (!cycling || !name) return;
+    current = (current + 1) % NAMES.length;
+    await crossfadeText(name, NAMES[current].text, NAMES[current].lang);
+    if (cycling) timer = window.setTimeout(showNextName, dur(NAME_HOLD_MS));
   };
 
-  const start = () => {
-    if (active || prefersReducedMotion()) return;
-    active = true;
-    mark()?.classList.add('is-cycling');
-    timer = window.setTimeout(step, dur(450));
+  const startCycling = () => {
+    if (cycling || prefersReducedMotion()) return;
+    cycling = true;
+    findWordmark()?.classList.add('is-cycling'); // makes the full stop blink
+    timer = window.setTimeout(showNextName, dur(450));
   };
 
-  const stop = () => {
-    if (!active) return;
-    active = false;
+  // Back to plain "parjanya" as soon as the pointer or focus leaves.
+  const stopCycling = () => {
+    if (!cycling) return;
+    cycling = false;
     window.clearTimeout(timer);
-    mark()?.classList.remove('is-cycling');
-    const t = target();
-    if (t && index !== 0) {
-      index = 0;
-      crossfadeText(t, NAMES[0].text, NAMES[0].lang, 360);
+    findWordmark()?.classList.remove('is-cycling');
+    const name = findName();
+    if (name && current !== 0) {
+      current = 0;
+      crossfadeText(name, NAMES[0].text, NAMES[0].lang, 360);
     }
   };
 
-  document.addEventListener('pointerover', (e) => {
-    if (e.pointerType === 'mouse' && (e.target as Element).closest('[data-wordmark]')) start();
+  // Mouse only: a tap on a phone is a click on the link, not a hover.
+  document.addEventListener('pointerover', (event) => {
+    if (event.pointerType === 'mouse' && (event.target as Element).closest('[data-wordmark]')) startCycling();
   });
-  document.addEventListener('pointerout', (e) => {
-    const from = (e.target as Element).closest('[data-wordmark]');
-    if (from && !from.contains(e.relatedTarget as Node)) stop();
+  document.addEventListener('pointerout', (event) => {
+    const leaving = (event.target as Element).closest('[data-wordmark]');
+    if (leaving && !leaving.contains(event.relatedTarget as Node)) stopCycling();
   });
-  document.addEventListener('focusin', (e) => {
-    if ((e.target as Element).closest?.('[data-wordmark]')) start();
+  document.addEventListener('focusin', (event) => {
+    if ((event.target as Element).closest?.('[data-wordmark]')) startCycling();
   });
-  document.addEventListener('focusout', (e) => {
-    if ((e.target as Element).closest?.('[data-wordmark]')) stop();
+  document.addEventListener('focusout', (event) => {
+    if ((event.target as Element).closest?.('[data-wordmark]')) stopCycling();
   });
-  document.addEventListener('astro:before-preparation', stop);
+  document.addEventListener('astro:before-preparation', stopCycling);
 }
 
-// ------------------------------------------- cycling "p." (404, resume page)
+// ------------------------------------------------------------ cycling "p." (404, 429, resume)
 
-const GLYPHS = ['p', 'ಪ', 'ప', 'प'];
-const GLYPH_LANGS = ['en', 'kn', 'te', 'sa'];
+const P_GLYPHS = [
+  { text: 'p', lang: 'en' },
+  { text: 'ಪ', lang: 'kn' },
+  { text: 'ప', lang: 'te' },
+  { text: 'प', lang: 'sa' },
+] as const;
+
+const GLYPH_HOLD_MS = 1500;
 
 function initGlyphCycle() {
   let timer = 0;
-  let i = 0;
-  const run = () => {
+  let current = 0;
+
+  const startOnThisPage = () => {
     window.clearTimeout(timer);
-    i = 0;
-    const el = document.querySelector<HTMLElement>('[data-p-glyph]');
-    if (!el || prefersReducedMotion()) return;
-    const tick = async () => {
-      if (!el.isConnected) return;
-      i = (i + 1) % GLYPHS.length;
-      await crossfadeText(el, GLYPHS[i], GLYPH_LANGS[i], 700);
-      timer = window.setTimeout(tick, dur(1500));
+    current = 0;
+    const glyph = document.querySelector<HTMLElement>('[data-p-glyph]');
+    if (!glyph || prefersReducedMotion()) return;
+
+    const showNextGlyph = async () => {
+      if (!glyph.isConnected) return;
+      current = (current + 1) % P_GLYPHS.length;
+      await crossfadeText(glyph, P_GLYPHS[current].text, P_GLYPHS[current].lang, 700);
+      timer = window.setTimeout(showNextGlyph, dur(GLYPH_HOLD_MS));
     };
-    timer = window.setTimeout(tick, dur(1500));
+    timer = window.setTimeout(showNextGlyph, dur(GLYPH_HOLD_MS));
   };
-  document.addEventListener('page:init', run);
+
+  document.addEventListener('page:init', startOnThisPage);
   document.addEventListener('page:leaving', () => window.clearTimeout(timer));
 }
 
 export function initInteractions() {
-  initCopy();
+  initCopyButtons();
   initNameCycle();
   initGlyphCycle();
 }

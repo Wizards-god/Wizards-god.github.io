@@ -1,11 +1,12 @@
-// Search behind the "ask" box. Plain functions over the JSON index from
-// /ask-index.json, so the same code runs in the browser and in tests.
+// The search behind the "ask" box. It's plain functions over the JSON index
+// from /ask-index.json, so it runs the same in the browser and in a test.
 //
-// Each query word is matched against the index exactly, by prefix ("calc" →
-// calculus) or with a typo ("resme" → resume), plus a few synonyms. Rare words
-// count for more than common ones (IDF). An answer is only given when it
-// covers most of the question and matches a title or keyword; otherwise the
-// box says it couldn't find one and points to email.
+// Each word of the question is matched against the index exactly, by prefix
+// ("calc" finds calculus) or with a typo ("resme" finds resume), plus a few
+// synonyms. Rare words count for more than common ones (IDF, the usual search
+// trick). It only gives an answer when that page covers most of the question
+// and matches a title or keyword. Otherwise it says it couldn't find one and
+// points to my email.
 
 export interface AskDoc {
   id: string;
@@ -21,7 +22,7 @@ export interface AskDoc {
 export interface AskIndex {
   docs: AskDoc[];
   synonyms: Record<string, string[]>;
-  /** Doc to answer "who are you?"-style questions with. */
+  /** The doc that answers "who are you?"-style questions. */
   aboutId: string;
   email: string;
 }
@@ -29,7 +30,7 @@ export interface AskIndex {
 export interface AskHit {
   doc: AskDoc;
   score: number;
-  /** Share of the question's words this doc matched (0–1). */
+  /** How much of the question this doc matched, from 0 to 1. */
   coverage: number;
   /** Matched at least one word in the title or keywords, not just the body. */
   strong: boolean;
@@ -41,7 +42,11 @@ export type AskResult =
   | { kind: 'unsure'; related: AskHit[] }
   | { kind: 'none' };
 
-const STOP = new Set(
+// ---- Turning text into words ---------------------------------------------
+
+// Filler that says nothing about what's being asked. My own name is in here
+// too: "what is parjanya studying" is a question about studying.
+const STOP_WORDS = new Set(
   `a an and are as at be been but by can could did do does doing for from had has have how i id im in into is it its
   just me my of on or so tell that the their them these this those to was what whats when where wheres which who whos
   why will with would you your yours youre yourself u ur r about any anything some something much many more info
@@ -49,17 +54,19 @@ const STOP = new Set(
   list out there here thing things stuff mean means meaning number parjanya parjanyas shankar he his ok okay`.split(/\s+/),
 );
 
-// Words that help when they match but shouldn't count against a doc when
-// they don't: "how does the intro work", "what did you build".
+// Words that help when they match, but shouldn't count against a page when
+// they don't, as in "how does the intro work" or "what did you build".
 const SOFT_WORDS = 'work use make made build built done go take think start new current get'.split(' ');
 
-// Questions about the person rather than a topic ("who are you?").
-const ABOUT = /\b(who|yourself|parjanya|introduce)\b/;
+// Questions about me rather than a topic ("who are you?").
+const ABOUT_ME = /\b(who|yourself|parjanya|introduce)\b/;
 
-const ROMAN: Record<string, string> = { ii: '2', iii: '3', iv: '4' };
+// So "Calculus III" and "calc 3" can meet.
+const ROMAN_NUMERALS: Record<string, string> = { ii: '2', iii: '3', iv: '4' };
 
-function norm(s: string) {
-  return s
+/** Lower case, accents and apostrophes gone, "cs124" split into "cs 124", punctuation turned into spaces. */
+function normalise(text: string) {
+  return text
     .toLowerCase()
     .normalize('NFKD')
     .replace(/\p{M}/gu, '')
@@ -71,210 +78,285 @@ function norm(s: string) {
 
 const VOWEL = /[aeiou]/;
 
-// A light stemmer (plurals, -ing, -ed, final -y and -e). It only has to be
-// consistent, since the index and the question go through the same function:
-// study, studies, studying → studi; course, courses → cours; coding → code.
-export function stem(word: string) {
-  let w = word;
-  if (/\d/.test(w)) return w;
-  if (w.length < 4) return w.length === 3 && /[^su]s$/.test(w) ? w.slice(0, -1) : w;
-  if (/ie[sd]$/.test(w) && w.length > 4) w = w.slice(0, -2);
-  else if (/(ss|ch|sh|x|z)es$/.test(w)) w = w.slice(0, -2);
-  else if (w.endsWith('s') && !/(ss|us|is)$/.test(w)) w = w.slice(0, -1);
-  else if ((w.length > 5 && w.endsWith('ing')) || (w.length > 4 && w.endsWith('ed'))) {
-    w = w.slice(0, w.endsWith('ing') ? -3 : -2);
-    const n = w.length;
+/**
+ * A light stemmer: it trims plurals, -ing, -ed and a final -y or -e. It
+ * doesn't have to produce real words, only the same stem for the index and
+ * the question, e.g. study, studies, studying → studi; course, courses →
+ * cours; coding → code.
+ */
+function stem(word: string) {
+  let result = word;
+  if (/\d/.test(result)) return result;
+  if (result.length < 4) return result.length === 3 && /[^su]s$/.test(result) ? result.slice(0, -1) : result;
+
+  if (/ie[sd]$/.test(result) && result.length > 4) result = result.slice(0, -2);
+  else if (/(ss|ch|sh|x|z)es$/.test(result)) result = result.slice(0, -2);
+  else if (result.endsWith('s') && !/(ss|us|is)$/.test(result)) result = result.slice(0, -1);
+  else if ((result.length > 5 && result.endsWith('ing')) || (result.length > 4 && result.endsWith('ed'))) {
+    result = result.slice(0, result.endsWith('ing') ? -3 : -2);
+    const length = result.length;
     // running → run, planned → plan
-    if (/([^aeiouls])\1$/.test(w)) w = w.slice(0, -1);
+    if (/([^aeiouls])\1$/.test(result)) result = result.slice(0, -1);
     // coding → code, hiring → hire
-    else if (n >= 3 && n <= 4 && !VOWEL.test(w[n - 3]) && VOWEL.test(w[n - 2]) && !/[aeiouwxy]/.test(w[n - 1])) w += 'e';
+    else if (
+      length >= 3 &&
+      length <= 4 &&
+      !VOWEL.test(result[length - 3]) &&
+      VOWEL.test(result[length - 2]) &&
+      !/[aeiouwxy]/.test(result[length - 1])
+    )
+      result += 'e';
   }
-  if (w.length > 3 && /[^aeiou]y$/.test(w)) w = w.slice(0, -1) + 'i';
-  if (w.length > 4 && w.endsWith('e')) w = w.slice(0, -1);
-  return w;
+
+  if (result.length > 3 && /[^aeiou]y$/.test(result)) result = result.slice(0, -1) + 'i';
+  if (result.length > 4 && result.endsWith('e')) result = result.slice(0, -1);
+  return result;
 }
 
-/** Words of `s` without stop words, as [stem, original length] pairs. */
-function words(s: string): [string, number][] {
-  return norm(s)
+interface Word {
+  stem: string;
+  /** Length of the word before stemming; typos are only forgiven in longer words. */
+  length: number;
+}
+
+/** The meaningful words in `text`, stemmed. */
+function wordsIn(text: string): Word[] {
+  return normalise(text)
     .split(' ')
-    .map((w) => ROMAN[w] ?? w)
-    .filter((w) => w && (w.length > 1 || /\d/.test(w)) && !STOP.has(w))
-    .map((w) => [stem(w), w.length]);
+    .map((word) => ROMAN_NUMERALS[word] ?? word)
+    .filter((word) => word && (word.length > 1 || /\d/.test(word)) && !STOP_WORDS.has(word))
+    .map((word) => ({ stem: stem(word), length: word.length }));
 }
 
-export const tokens = (s: string) => words(s).map(([t]) => t);
+const stemsIn = (text: string) => wordsIn(text).map((word) => word.stem);
 
-const SOFT = new Set(SOFT_WORDS.map(stem));
+const SOFT_STEMS = new Set(SOFT_WORDS.map(stem));
 
-// Damerau-Levenshtein distance, stopping early once it passes `max`.
-function distance(a: string, b: string, max: number) {
+/**
+ * How many edits (insert, delete, swap two letters, change one) turn `a` into
+ * `b` (Damerau-Levenshtein). It gives up early and returns `max + 1` once
+ * the answer is bound to be bigger than `max`.
+ */
+function editDistance(a: string, b: string, max: number) {
   if (Math.abs(a.length - b.length) > max) return max + 1;
-  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  const table: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) table[0][j] = j;
   for (let i = 1; i <= a.length; i++) {
-    let rowMin = Infinity;
+    let rowMinimum = Infinity;
     for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
-      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
-      rowMin = Math.min(rowMin, d[i][j]);
+      const substitutionCost = a[i - 1] === b[j - 1] ? 0 : 1;
+      table[i][j] = Math.min(table[i - 1][j] + 1, table[i][j - 1] + 1, table[i - 1][j - 1] + substitutionCost);
+      const swapped = i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1];
+      if (swapped) table[i][j] = Math.min(table[i][j], table[i - 2][j - 2] + 1);
+      rowMinimum = Math.min(rowMinimum, table[i][j]);
     }
-    if (rowMin > max) return max + 1;
+    if (rowMinimum > max) return max + 1;
   }
-  return d[a.length][b.length];
+  return table[a.length][b.length];
 }
 
-interface Prepared {
+// ---- Searching -----------------------------------------------------------
+
+/** A doc from the index, with its words counted up ahead of time. */
+interface IndexedDoc {
   doc: AskDoc;
-  title: Set<string>;
+  titleStems: Set<string>;
   titlePhrase: string;
-  keys: Set<string>;
-  body: Map<string, number>;
+  keywordStems: Set<string>;
+  /** How many times each stem appears in the body text. */
+  bodyCounts: Map<string, number>;
+}
+
+/** One word of the question, with every index word it might mean. */
+interface QuestionTerm {
+  /** Index word → how sure we are it's what was meant (1 = exact match). */
+  meanings: Map<string, number>;
+  /** IDF: rarer words count for more. */
+  weight: number;
+  soft: boolean;
 }
 
 export interface Searcher {
-  search(query: string): AskResult;
+  search(question: string): AskResult;
 }
 
 export function createSearcher(index: AskIndex): Searcher {
-  const docs: Prepared[] = index.docs.map((doc) => {
-    const body = new Map<string, number>();
-    for (const t of tokens(doc.text)) body.set(t, (body.get(t) ?? 0) + 1);
-    const title = tokens(doc.title);
-    return { doc, title: new Set(title), titlePhrase: title.join(' '), keys: new Set(doc.keywords.flatMap(tokens)), body };
+  const docs: IndexedDoc[] = index.docs.map((doc) => {
+    const bodyCounts = new Map<string, number>();
+    for (const word of stemsIn(doc.text)) bodyCounts.set(word, (bodyCounts.get(word) ?? 0) + 1);
+    const titleStems = stemsIn(doc.title);
+    return {
+      doc,
+      titleStems: new Set(titleStems),
+      titlePhrase: titleStems.join(' '),
+      keywordStems: new Set(doc.keywords.flatMap(stemsIn)),
+      bodyCounts,
+    };
   });
-  const about = docs.find((p) => p.doc.id === index.aboutId);
+  const aboutDoc = docs.find((indexed) => indexed.doc.id === index.aboutId);
 
   const synonyms = new Map<string, string[]>();
-  for (const [k, v] of Object.entries(index.synonyms)) {
-    const key = tokens(k).join(' ');
-    if (key) synonyms.set(key, [...(synonyms.get(key) ?? []), ...v.flatMap(tokens)]);
+  for (const [word, alternatives] of Object.entries(index.synonyms)) {
+    const key = stemsIn(word).join(' ');
+    if (key) synonyms.set(key, [...(synonyms.get(key) ?? []), ...alternatives.flatMap(stemsIn)]);
   }
 
-  // Vocabulary with document frequencies.
-  const df = new Map<string, number>();
-  for (const p of docs) for (const t of new Set([...p.title, ...p.keys, ...p.body.keys()])) df.set(t, (df.get(t) ?? 0) + 1);
-  const vocab = [...df.keys()];
-  const N = docs.length;
-  const idf = (n: number) => Math.log(1 + (N - n + 0.5) / (n + 0.5));
+  // Every word in the index, and how many docs it appears in.
+  const docsContaining = new Map<string, number>();
+  for (const indexed of docs) {
+    for (const word of new Set([...indexed.titleStems, ...indexed.keywordStems, ...indexed.bodyCounts.keys()])) {
+      docsContaining.set(word, (docsContaining.get(word) ?? 0) + 1);
+    }
+  }
+  const vocabulary = [...docsContaining.keys()];
+  const totalDocs = docs.length;
+  // The BM25 flavour of IDF: close to zero for words in every doc, large for rare ones.
+  const inverseDocFrequency = (matchingDocs: number) => Math.log(1 + (totalDocs - matchingDocs + 0.5) / (matchingDocs + 0.5));
 
-  // Index words a query word could mean, with how sure we are. Typos are only
-  // allowed for longer words, and never in the first letter.
-  const cache = new Map<string, Map<string, number>>();
-  function candidates(q: string, len: number) {
-    const key = `${q}|${len}`;
-    const hit = cache.get(key);
-    if (hit) return hit;
-    const out = new Map<string, number>();
-    const put = (t: string, w: number) => out.set(t, Math.max(out.get(t) ?? 0, w));
-    if (df.has(q)) put(q, 1);
-    const digits = /^\d+$/.test(q);
-    for (const t of vocab) {
-      if (t === q) continue;
-      if ((q.length >= 4 || (digits && q.length >= 3)) && t.startsWith(q)) put(t, 0.75);
-      else if (t.length >= 4 && !/\d/.test(t) && q.startsWith(t)) put(t, 0.7);
-      else if (!digits && len >= 5 && t[0] === q[0]) {
-        const max = len >= 8 ? 2 : 1;
-        const d = distance(q, t, max);
-        if (d <= max) put(t, d === 1 ? 0.7 : 0.55);
+  // The index words a question word could mean, and how sure we are about
+  // each. Typos are only allowed in longer words, and never in the first letter.
+  const meaningsCache = new Map<string, Map<string, number>>();
+  function possibleMeanings(wordStem: string, wordLength: number) {
+    const cacheKey = `${wordStem}|${wordLength}`;
+    const cached = meaningsCache.get(cacheKey);
+    if (cached) return cached;
+
+    const meanings = new Map<string, number>();
+    const consider = (indexWord: string, confidence: number) =>
+      meanings.set(indexWord, Math.max(meanings.get(indexWord) ?? 0, confidence));
+
+    if (docsContaining.has(wordStem)) consider(wordStem, 1);
+    const isNumber = /^\d+$/.test(wordStem);
+    for (const indexWord of vocabulary) {
+      if (indexWord === wordStem) continue;
+      // "calc" → calculus, "241" → 241h
+      if ((wordStem.length >= 4 || (isNumber && wordStem.length >= 3)) && indexWord.startsWith(wordStem)) consider(indexWord, 0.75);
+      // the other way round: "writing" (stem "write") → writ
+      else if (indexWord.length >= 4 && !/\d/.test(indexWord) && wordStem.startsWith(indexWord)) consider(indexWord, 0.7);
+      // typos: one in a word of 5+ letters, two in 8+
+      else if (!isNumber && wordLength >= 5 && indexWord[0] === wordStem[0]) {
+        const allowedEdits = wordLength >= 8 ? 2 : 1;
+        const edits = editDistance(wordStem, indexWord, allowedEdits);
+        if (edits <= allowedEdits) consider(indexWord, edits === 1 ? 0.7 : 0.55);
       }
     }
-    cache.set(key, out);
-    return out;
+    meaningsCache.set(cacheKey, meanings);
+    return meanings;
   }
 
-  // [score, strong]: strong means the word is in the title or keywords, or
-  // comes up more than once in the body.
-  function fieldScore(p: Prepared, t: string): [number, boolean] {
-    let s = 0;
-    if (p.title.has(t)) s += 3;
-    if (p.keys.has(t)) s += 3;
-    const f = p.body.get(t) ?? 0;
-    const strong = s > 0 || f > 1;
-    if (f) s += Math.min(1 + Math.log(f), 2);
-    return [s, strong];
+  /**
+   * How well one index word matches a doc: titles and keywords count most,
+   * then how often it shows up in the body. "Strong" means it's in the title
+   * or keywords, or comes up more than once in the body.
+   */
+  function matchStrength(indexed: IndexedDoc, indexWord: string): [score: number, strong: boolean] {
+    let score = 0;
+    if (indexed.titleStems.has(indexWord)) score += 3;
+    if (indexed.keywordStems.has(indexWord)) score += 3;
+    const timesInBody = indexed.bodyCounts.get(indexWord) ?? 0;
+    const strong = score > 0 || timesInBody > 1;
+    if (timesInBody) score += Math.min(1 + Math.log(timesInBody), 2);
+    return [score, strong];
   }
 
-  function rank(query: string): AskHit[] {
-    const seen = new Set<string>();
-    const raw = words(query).filter(([t]) => !seen.has(t) && seen.add(t));
-    if (!raw.length) return [];
+  function rankDocs(question: string): AskHit[] {
+    const seenStems = new Set<string>();
+    const questionWords = wordsIn(question).filter((word) => !seenStems.has(word.stem) && seenStems.add(word.stem));
+    if (!questionWords.length) return [];
 
-    // Each query word expands to the index words it could mean (itself,
-    // prefixes, near-misses and synonyms), each with a confidence.
-    const terms = raw.map(([q, len]) => {
-      const expanded = new Map(candidates(q, len));
-      for (const s of synonyms.get(q) ?? [])
-        for (const [t, w] of candidates(s, s.length)) expanded.set(t, Math.max(expanded.get(t) ?? 0, w * 0.8));
-      const matching = docs.filter((p) => [...expanded.keys()].some((t) => fieldScore(p, t)[0] > 0)).length;
-      return { expanded, weight: idf(matching), soft: SOFT.has(q) };
+    // Each question word expands into every index word it might mean: itself,
+    // prefixes, near misses and synonyms (synonyms count a bit less).
+    const terms: QuestionTerm[] = questionWords.map((word) => {
+      const meanings = new Map(possibleMeanings(word.stem, word.length));
+      for (const synonym of synonyms.get(word.stem) ?? []) {
+        for (const [indexWord, confidence] of possibleMeanings(synonym, synonym.length)) {
+          meanings.set(indexWord, Math.max(meanings.get(indexWord) ?? 0, confidence * 0.8));
+        }
+      }
+      const matchingDocs = docs.filter((indexed) =>
+        [...meanings.keys()].some((indexWord) => matchStrength(indexed, indexWord)[0] > 0),
+      ).length;
+      return { meanings, weight: inverseDocFrequency(matchingDocs), soft: SOFT_STEMS.has(word.stem) };
     });
-    const phrase = raw.map(([t]) => t).join(' ');
+    const questionPhrase = questionWords.map((word) => word.stem).join(' ');
 
     return docs
-      .map((p) => {
+      .map((indexed) => {
         let score = 0;
-        let covered = 0;
-        let coveredWeight = 0;
-        let asked = 0;
-        let askedWeight = 0;
+        let matchedTerms = 0;
+        let matchedWeight = 0;
+        let countedTerms = 0;
+        let countedWeight = 0;
         let strong = false;
+
         for (const term of terms) {
-          let best = 0;
-          let bestStrong = false;
-          for (const [t, w] of term.expanded) {
-            const [s, isStrong] = fieldScore(p, t);
-            if (s * w > best) (best = s * w), (bestStrong = isStrong);
+          // The best way this question word matches this doc.
+          let bestScore = 0;
+          let bestIsStrong = false;
+          for (const [indexWord, confidence] of term.meanings) {
+            const [wordScore, wordIsStrong] = matchStrength(indexed, indexWord);
+            if (wordScore * confidence > bestScore) {
+              bestScore = wordScore * confidence;
+              bestIsStrong = wordIsStrong;
+            }
           }
-          if (best > 0) {
-            score += term.weight * best;
-            covered++;
-            coveredWeight += term.weight;
-            strong ||= bestStrong;
+          if (bestScore > 0) {
+            score += term.weight * bestScore;
+            matchedTerms++;
+            matchedWeight += term.weight;
+            strong ||= bestIsStrong;
           }
-          if (best > 0 || !term.soft) {
-            asked++;
-            askedWeight += term.weight;
+          // Soft words only count towards coverage when they match.
+          if (bestScore > 0 || !term.soft) {
+            countedTerms++;
+            countedWeight += term.weight;
           }
         }
-        // Exact multi-word matches ("discrete structures", "cs 124") beat scattered words.
-        if (raw.length > 1 && p.titlePhrase.includes(phrase)) score += 8;
-        score *= p.doc.boost ?? 1;
-        const coverage = asked ? Math.min(covered / asked, coveredWeight / askedWeight) : 0;
-        return { doc: p.doc, score, coverage, strong };
+
+        // The exact phrase in a title ("discrete structures", "cs 124") beats the same words scattered about.
+        if (questionWords.length > 1 && indexed.titlePhrase.includes(questionPhrase)) score += 8;
+        score *= indexed.doc.boost ?? 1;
+        // Coverage has to be good both by count and by weight, so one rare word can't carry a long question.
+        const coverage = countedTerms ? Math.min(matchedTerms / countedTerms, matchedWeight / countedWeight) : 0;
+        return { doc: indexed.doc, score, coverage, strong };
       })
-      .filter((r) => r.score > 0)
+      .filter((hit) => hit.score > 0)
       .sort((a, b) => b.score * (0.25 + 0.75 * b.coverage) - a.score * (0.25 + 0.75 * a.coverage));
   }
 
-  const distinct = (hits: AskHit[], skip?: string) => {
-    const seen = new Set(skip ? [skip] : []);
-    return hits.filter((h) => !seen.has(h.doc.url) && seen.add(h.doc.url));
+  /** Drops hits that point at the same page as an earlier one (or as `skipUrl`). */
+  const onePerPage = (hits: AskHit[], skipUrl?: string) => {
+    const seenUrls = new Set(skipUrl ? [skipUrl] : []);
+    return hits.filter((hit) => !seenUrls.has(hit.doc.url) && seenUrls.add(hit.doc.url));
   };
 
   return {
-    search(query) {
-      const q = norm(query).trim();
-      if (!q) return { kind: 'empty' };
-      if (/^(hi+|hello|hey+|hiya|yo|howdy|namaste|namaskara|good (morning|afternoon|evening))( there)?$/.test(q))
+    search(question) {
+      const normalised = normalise(question).trim();
+      if (!normalised) return { kind: 'empty' };
+      if (/^(hi+|hello|hey+|hiya|yo|howdy|namaste|namaskara|good (morning|afternoon|evening))( there)?$/.test(normalised)) {
         return { kind: 'greeting' };
-      if (/^(thanks?( you)?|thank u|thx|ty|cheers|great|cool|nice)( so much)?$/.test(q)) return { kind: 'thanks' };
+      }
+      if (/^(thanks?( you)?|thank u|thx|ty|cheers|great|cool|nice)( so much)?$/.test(normalised)) return { kind: 'thanks' };
 
-      const hits = rank(query);
-      if (!hits.length && about && ABOUT.test(q))
-        return { kind: 'answer', top: { doc: about.doc, score: 1, coverage: 1, strong: true }, related: [] };
+      const hits = rankDocs(question);
+      // "Who are you?" is all stop words, so nothing matches; answer it with the about doc.
+      if (!hits.length && aboutDoc && ABOUT_ME.test(normalised)) {
+        return { kind: 'answer', top: { doc: aboutDoc.doc, score: 1, coverage: 1, strong: true }, related: [] };
+      }
 
-      const top = hits.find((h) => h.strong && h.coverage >= 0.6);
+      const top = hits.find((hit) => hit.strong && hit.coverage >= 0.6);
       if (top) {
-        const related = distinct(
-          hits.filter((h) => h !== top && h.strong && h.coverage >= 0.5 && h.score >= top.score * 0.6),
+        const related = onePerPage(
+          hits.filter((hit) => hit !== top && hit.strong && hit.coverage >= 0.5 && hit.score >= top.score * 0.6),
           top.doc.url,
         ).slice(0, 2);
         return { kind: 'answer', top, related };
       }
-      const maybe = distinct(hits.filter((h) => h.coverage >= 0.34 && (h.strong || h.coverage === 1))).slice(0, 2);
-      return maybe.length ? { kind: 'unsure', related: maybe } : { kind: 'none' };
+
+      // Nothing good enough to call an answer: offer the closest pages, if any are close at all.
+      const closest = onePerPage(hits.filter((hit) => hit.coverage >= 0.34 && (hit.strong || hit.coverage === 1))).slice(0, 2);
+      return closest.length ? { kind: 'unsure', related: closest } : { kind: 'none' };
     },
   };
 }

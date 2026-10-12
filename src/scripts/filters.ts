@@ -1,174 +1,189 @@
-// Filterable lists (projects, bookshelf): tag/year chips, a rows/grid view
-// toggle, and "Show more" with an animated height change.
+// Lists you can narrow down: the projects page and the bookshelf. This runs
+// the tag and year filter chips, the rows/cards switch on /projects, "Show
+// more" on the bookshelf, and the gen-ed toggle on /coursework.
+//
+// The filter chips and the rows/cards switch are hidden for now (see
+// site.listControls in src/data/site.ts). This code is ready for when they
+// come back; until then it simply finds no chips to wire up.
 
 import { animate, dur, EASE, prefersReducedMotion, pageSignal } from './motion';
 import { revealWithin } from './reveal';
 
-type Item = HTMLElement & { dataset: DOMStringMap };
-
+/** Items that just appeared slide up one after another. */
 function staggerIn(items: HTMLElement[]) {
   if (prefersReducedMotion()) return;
-  items.forEach((el, i) =>
-    animate(el, [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], {
+  items.forEach((item, position) =>
+    animate(item, [{ opacity: 0, transform: 'translateY(12px)' }, { opacity: 1, transform: 'none' }], {
       duration: dur(450),
-      delay: dur(i * 70),
+      delay: dur(position * 70),
       easing: EASE.out,
       fill: 'backwards',
     }),
   );
 }
 
-/** Animate an element's height across a DOM change made by `mutate`. */
-async function animateHeight(el: HTMLElement, mutate: () => void) {
+/** Runs `changeDom`, and animates `element`'s height from what it was to what it is now. */
+async function animateHeight(element: HTMLElement, changeDom: () => void) {
   if (prefersReducedMotion()) {
-    mutate();
+    changeDom();
     return;
   }
-  const from = el.offsetHeight;
-  mutate();
-  const to = el.offsetHeight;
-  if (from === to) return;
-  el.style.overflow = 'clip';
-  await animate(el, [{ height: `${from}px` }, { height: `${to}px` }], { duration: dur(400), easing: EASE.ui });
-  el.style.overflow = '';
+  const heightBefore = element.offsetHeight;
+  changeDom();
+  const heightAfter = element.offsetHeight;
+  if (heightBefore === heightAfter) return;
+  element.style.overflow = 'clip';
+  await animate(element, [{ height: `${heightBefore}px` }, { height: `${heightAfter}px` }], {
+    duration: dur(400),
+    easing: EASE.ui,
+  });
+  element.style.overflow = '';
 }
 
-function setupFilter(root: HTMLElement) {
-  const list = root.querySelector<HTMLElement>('[data-filter-list]');
+function setUpFilteredList(filterRoot: HTMLElement) {
+  const list = filterRoot.querySelector<HTMLElement>('[data-filter-list]');
   if (!list) return;
-  const items = [...list.querySelectorAll<Item>('[data-item]')];
-  const status = root.querySelector<HTMLElement>('[data-filter-status]');
-  const empty = root.querySelector<HTMLElement>('[data-filter-empty]');
-  const moreBtn = root.querySelector<HTMLButtonElement>('[data-show-more]');
-  const limit = Number(root.dataset.limit ?? 0);
-  const noun = root.dataset.noun ?? 'items';
-  const state: Record<string, string> = {};
+  const items = [...list.querySelectorAll<HTMLElement>('[data-item]')];
+  const statusMessage = filterRoot.querySelector<HTMLElement>('[data-filter-status]');
+  const emptyMessage = filterRoot.querySelector<HTMLElement>('[data-filter-empty]');
+  const showMoreButton = filterRoot.querySelector<HTMLButtonElement>('[data-show-more]');
+  const limit = Number(filterRoot.dataset.limit ?? 0); // 0 means show everything
+  const noun = filterRoot.dataset.noun ?? 'items'; // for the screen-reader count, e.g. "4 books shown"
+  const chosenFilters: Record<string, string> = {}; // e.g. { tags: 'maths', year: '2026' }
   let expanded = false;
 
-  const matches = (el: Item) =>
-    Object.entries(state).every(([key, value]) => {
+  // An item matches when, for every filter, it has the chosen value (or the filter is "all").
+  const matchesFilters = (item: HTMLElement) =>
+    Object.entries(chosenFilters).every(([key, value]) => {
       if (!value || value === 'all') return true;
-      return (el.dataset[key] ?? '').split('|').includes(value);
+      return (item.dataset[key] ?? '').split('|').includes(value);
     });
 
-  const apply = (animateChange: boolean) => {
-    const before = new Set(items.filter((i) => !i.hidden));
-    const matching = items.filter(matches);
+  const update = (animateChange: boolean) => {
+    const visibleBefore = new Set(items.filter((item) => !item.hidden));
+    const matching = items.filter(matchesFilters);
     const shown = limit && !expanded ? matching.slice(0, limit) : matching;
-    const mutate = () => {
-      items.forEach((i) => (i.hidden = !shown.includes(i)));
-      if (empty) empty.hidden = matching.length > 0;
-      if (moreBtn) {
-        moreBtn.hidden = !limit || matching.length <= limit;
-        moreBtn.textContent = expanded ? 'Show less' : `Show more (${matching.length - limit})`;
-        moreBtn.setAttribute('aria-expanded', String(expanded));
+
+    const changeDom = () => {
+      items.forEach((item) => (item.hidden = !shown.includes(item)));
+      if (emptyMessage) emptyMessage.hidden = matching.length > 0;
+      if (showMoreButton) {
+        showMoreButton.hidden = !limit || matching.length <= limit;
+        showMoreButton.textContent = expanded ? 'Show less' : `Show more (${matching.length - limit})`;
+        showMoreButton.setAttribute('aria-expanded', String(expanded));
       }
     };
+
     if (!animateChange) {
-      mutate(); // matches the server-rendered state, so no layout shift
+      changeDom(); // matches what the server rendered, so nothing shifts on load
       return;
     }
-    animateHeight(list, mutate);
+    animateHeight(list, changeDom);
     revealWithin(list);
-    staggerIn(shown.filter((i) => !before.has(i)));
-    if (status) status.textContent = `${matching.length} ${noun} shown`;
+    staggerIn(shown.filter((item) => !visibleBefore.has(item)));
+    if (statusMessage) statusMessage.textContent = `${matching.length} ${noun} shown`;
   };
 
   const signal = pageSignal();
 
-  root.querySelectorAll<HTMLButtonElement>('[data-filter-key]').forEach((btn) => {
-    btn.addEventListener(
+  // Clicking the chip that's already chosen goes back to "all".
+  filterRoot.querySelectorAll<HTMLButtonElement>('[data-filter-key]').forEach((chip) => {
+    chip.addEventListener(
       'click',
       () => {
-        const key = btn.dataset.filterKey!;
-        const value = btn.dataset.filterValue!;
-        const next = state[key] === value ? 'all' : value;
-        state[key] = next;
-        root.querySelectorAll<HTMLButtonElement>(`[data-filter-key="${key}"]`).forEach((b) =>
-          b.setAttribute('aria-pressed', String((b.dataset.filterValue ?? 'all') === next)),
-        );
-        apply(true);
+        const key = chip.dataset.filterKey!;
+        const value = chip.dataset.filterValue!;
+        const nextValue = chosenFilters[key] === value ? 'all' : value;
+        chosenFilters[key] = nextValue;
+        filterRoot
+          .querySelectorAll<HTMLButtonElement>(`[data-filter-key="${key}"]`)
+          .forEach((sameGroupChip) =>
+            sameGroupChip.setAttribute('aria-pressed', String((sameGroupChip.dataset.filterValue ?? 'all') === nextValue)),
+          );
+        update(true);
       },
       { signal },
     );
   });
 
-  moreBtn?.addEventListener(
+  showMoreButton?.addEventListener(
     'click',
     () => {
       expanded = !expanded;
-      apply(true);
+      update(true);
     },
     { signal },
   );
 
-  // Rows / grid toggle (projects).
-  const views = root.querySelectorAll<HTMLButtonElement>('[data-view]');
-  if (views.length) {
-    const setView = (v: string, persist: boolean) => {
-      list.dataset.layout = v;
-      views.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
-      if (persist) {
+  // Rows or cards (projects page). The choice is remembered for next time.
+  const viewButtons = filterRoot.querySelectorAll<HTMLButtonElement>('[data-view]');
+  if (viewButtons.length) {
+    const setView = (view: string, remember: boolean) => {
+      list.dataset.layout = view;
+      viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+      if (remember) {
         try {
-          localStorage.setItem('projects-view', v);
+          localStorage.setItem('projects-view', view);
         } catch {
-          /* ignore */
+          // Storage is off; the choice just won't be remembered.
         }
       }
     };
-    let saved: string | null = null;
+    let savedView: string | null = null;
     try {
-      saved = localStorage.getItem('projects-view');
+      savedView = localStorage.getItem('projects-view');
     } catch {
-      saved = null;
+      savedView = null;
     }
-    if (saved === 'rows' || saved === 'grid') setView(saved, false);
-    views.forEach((b) =>
-      b.addEventListener(
+    if (savedView === 'rows' || savedView === 'grid') setView(savedView, false);
+    viewButtons.forEach((button) =>
+      button.addEventListener(
         'click',
         () => {
-          setView(b.dataset.view!, true);
-          staggerIn(items.filter((i) => !i.hidden));
+          setView(button.dataset.view!, true);
+          staggerIn(items.filter((item) => !item.hidden));
         },
         { signal },
       ),
     );
   }
 
-  root.classList.add('is-enhanced');
-  apply(false);
+  filterRoot.classList.add('is-enhanced');
+  update(false);
 }
 
-/** Coursework: STEM courses by default; a toggle reveals gen eds. */
-function setupGenEdToggle(btn: HTMLButtonElement) {
-  const list = document.getElementById(btn.getAttribute('aria-controls') ?? '');
-  const label = btn.querySelector<HTMLElement>('[data-gened-label]');
-  const status = document.querySelector<HTMLElement>('[data-gened-status]');
-  if (!list) return;
-  const rows = [...list.querySelectorAll<HTMLElement>('[data-category="gen-ed"]')];
-  const genEdTerms = [...list.querySelectorAll<HTMLElement>('[data-gened-only]')];
-  let shown = false;
+/** Coursework: STEM courses by default, and a button that shows the gen eds as well. */
+function setUpGenEdToggle(button: HTMLButtonElement) {
+  const courseList = document.getElementById(button.getAttribute('aria-controls') ?? '');
+  const label = button.querySelector<HTMLElement>('[data-gened-label]');
+  const statusMessage = document.querySelector<HTMLElement>('[data-gened-status]');
+  if (!courseList) return;
+  const genEdRows = [...courseList.querySelectorAll<HTMLElement>('[data-category="gen-ed"]')];
+  const genEdOnlyTerms = [...courseList.querySelectorAll<HTMLElement>('[data-gened-only]')]; // semesters with nothing else in them
+  let showingGenEds = false;
 
-  btn.addEventListener(
+  button.addEventListener(
     'click',
     () => {
-      shown = !shown;
-      animateHeight(list, () => {
-        rows.forEach((r) => (r.hidden = !shown));
-        genEdTerms.forEach((t) => (t.hidden = !shown));
+      showingGenEds = !showingGenEds;
+      animateHeight(courseList, () => {
+        genEdRows.forEach((row) => (row.hidden = !showingGenEds));
+        genEdOnlyTerms.forEach((term) => (term.hidden = !showingGenEds));
       });
-      revealWithin(list);
-      if (shown) staggerIn(rows);
-      btn.setAttribute('aria-pressed', String(shown));
-      if (label) label.textContent = shown ? 'Hide gen eds' : `Show gen eds (${rows.length})`;
-      if (status) status.textContent = shown ? `Showing ${rows.length} gen ed courses` : 'Showing STEM courses only';
+      revealWithin(courseList);
+      if (showingGenEds) staggerIn(genEdRows);
+      button.setAttribute('aria-pressed', String(showingGenEds));
+      if (label) label.textContent = showingGenEds ? 'Hide gen eds' : `Show gen eds (${genEdRows.length})`;
+      if (statusMessage) {
+        statusMessage.textContent = showingGenEds ? `Showing ${genEdRows.length} gen ed courses` : 'Showing STEM courses only';
+      }
     },
     { signal: pageSignal() },
   );
-  btn.dataset.enhanced = '';
+  button.dataset.enhanced = '';
 }
 
 export function initFilters() {
-  document.querySelectorAll<HTMLElement>('[data-filter-root]:not(.is-enhanced)').forEach(setupFilter);
-  document.querySelectorAll<HTMLButtonElement>('[data-gened-toggle]:not([data-enhanced])').forEach(setupGenEdToggle);
+  document.querySelectorAll<HTMLElement>('[data-filter-root]:not(.is-enhanced)').forEach(setUpFilteredList);
+  document.querySelectorAll<HTMLButtonElement>('[data-gened-toggle]:not([data-enhanced])').forEach(setUpGenEdToggle);
 }

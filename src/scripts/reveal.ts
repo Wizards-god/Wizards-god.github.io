@@ -1,46 +1,50 @@
-// Scroll reveal: [data-reveal] elements fade in and rise 20px once, when about
-// 15% visible. Children of [data-reveal-stagger] get a ~90ms stagger.
+// Scroll reveals: elements marked [data-reveal] fade in and rise 20px the first
+// time they're about 15% on screen. Children of [data-reveal-stagger] come in
+// one after another, about 90ms apart (the delay itself is in global.css).
 
 import { prefersReducedMotion } from './motion';
 
-let io: IntersectionObserver | null = null;
+let observer: IntersectionObserver | null = null;
 
 export function startReveal() {
-  io?.disconnect();
-  const els = [...document.querySelectorAll<HTMLElement>('[data-reveal]:not(.is-revealed)')];
-  if (!els.length) return;
+  observer?.disconnect();
+  const hiddenElements = [...document.querySelectorAll<HTMLElement>('[data-reveal]:not(.is-revealed)')];
+  if (!hiddenElements.length) return;
 
   if (prefersReducedMotion() || !('IntersectionObserver' in window)) {
-    els.forEach((el) => el.classList.add('is-revealed'));
+    hiddenElements.forEach((element) => element.classList.add('is-revealed'));
     return;
   }
 
-  document.querySelectorAll<HTMLElement>('[data-reveal-stagger]').forEach((parent) => {
-    [...parent.children].forEach((child, i) => {
-      if (child.hasAttribute('data-reveal')) (child as HTMLElement).style.setProperty('--reveal-i', String(i % 6));
+  // Number the children of each staggered group, so CSS can delay them in
+  // turn. The count starts again every 6, so long lists don't drag on.
+  document.querySelectorAll<HTMLElement>('[data-reveal-stagger]').forEach((group) => {
+    [...group.children].forEach((child, position) => {
+      if (child.hasAttribute('data-reveal')) (child as HTMLElement).style.setProperty('--reveal-i', String(position % 6));
     });
   });
 
-  io = new IntersectionObserver(
+  observer = new IntersectionObserver(
     (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        // Tall elements may never reach 15% of their own height; also accept 15% of the viewport.
-        if (e.intersectionRatio >= 0.15 || e.intersectionRect.height >= innerHeight * 0.15) {
-          e.target.classList.add('is-revealed');
-          io?.unobserve(e.target);
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        // A very tall element might never get to 15% of its own height on
+        // screen, so 15% of the screen's height counts too.
+        if (entry.intersectionRatio >= 0.15 || entry.intersectionRect.height >= innerHeight * 0.15) {
+          entry.target.classList.add('is-revealed');
+          observer?.unobserve(entry.target);
         }
       }
     },
     { threshold: [0, 0.15, 0.3] },
   );
-  els.forEach((el) => io!.observe(el));
+  hiddenElements.forEach((element) => observer!.observe(element));
 }
 
-/** Reveal anything inside `root` right away (e.g. items shown by a filter). */
-export function revealWithin(root: Element) {
-  root.querySelectorAll('[data-reveal]').forEach((el) => {
-    el.classList.add('is-revealed');
-    io?.unobserve(el);
+/** Reveals everything inside `scope` right away, e.g. items a filter just showed. */
+export function revealWithin(scope: Element) {
+  scope.querySelectorAll('[data-reveal]').forEach((element) => {
+    element.classList.add('is-revealed');
+    observer?.unobserve(element);
   });
 }

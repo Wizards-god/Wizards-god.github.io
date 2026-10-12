@@ -1,81 +1,88 @@
-// Light/dark theme: toggle, curtain wipe, system-preference sync.
-// The no-flash part lives in the inline <head> script (components/Head.astro).
+// Light and dark mode: the toggle, the curtain that wipes across while the
+// theme changes, and following the system setting. Picking the theme before
+// the first paint (so there's no flash) happens in the inline <head> script,
+// in components/Head.astro.
 
 import { html, animate, dur, EASE, afterPaint, prefersReducedMotion } from './motion';
 
 export type Theme = 'light' | 'dark';
 
-const BG: Record<Theme, string> = { dark: '#1c1c1b', light: '#f5f4f0' };
-const systemLight = matchMedia('(prefers-color-scheme: light)');
+// Matches --bg in global.css; used for the browser's own UI colour.
+const BACKGROUND: Record<Theme, string> = { dark: '#1c1c1b', light: '#f5f4f0' };
+const systemPrefersLight = matchMedia('(prefers-color-scheme: light)');
 
-function stored(): Theme | null {
+/** The theme the visitor picked earlier, if they ever did. */
+function savedTheme(): Theme | null {
   try {
-    const v = localStorage.getItem('theme');
-    return v === 'light' || v === 'dark' ? v : null;
+    const saved = localStorage.getItem('theme');
+    return saved === 'light' || saved === 'dark' ? saved : null;
   } catch {
     return null;
   }
 }
 
-function store(t: Theme) {
+function saveTheme(theme: Theme) {
   try {
-    localStorage.setItem('theme', t);
+    localStorage.setItem('theme', theme);
   } catch {
-    /* private mode: the choice lasts for this page only */
+    // Storage is off (private mode, say): the choice just lasts for this page.
   }
 }
 
 export const currentTheme = (): Theme => (html.dataset.theme === 'light' ? 'light' : 'dark');
-const systemTheme = (): Theme => (systemLight.matches ? 'light' : 'dark');
+const systemTheme = (): Theme => (systemPrefersLight.matches ? 'light' : 'dark');
 
-function syncChrome(t: Theme) {
-  document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute('content', BG[t]));
-  const next = t === 'dark' ? 'light' : 'dark';
-  document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((b) => {
-    b.setAttribute('aria-label', `Switch to ${next} theme`);
-    b.classList.remove('is-flipping');
+/** Updates the browser UI colour and the toggle's label to match the theme. */
+function syncThemeUi(theme: Theme) {
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => meta.setAttribute('content', BACKGROUND[theme]));
+  const otherTheme = theme === 'dark' ? 'light' : 'dark';
+  document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((button) => {
+    button.setAttribute('aria-label', `Switch to ${otherTheme} theme`);
+    button.classList.remove('is-flipping');
   });
 }
 
-/** Set the theme on <html> (or on another root, e.g. a document about to be swapped in). */
-export function applyTheme(t: Theme, root: HTMLElement = html) {
-  root.dataset.theme = t;
-  root.style.colorScheme = t;
-  if (root === html) syncChrome(t);
+/** Sets the theme on <html>, or on another root, like a page that's about to be swapped in. */
+export function applyTheme(theme: Theme, root: HTMLElement = html) {
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+  if (root === html) syncThemeUi(theme);
 }
 
-function flip(t: Theme) {
+/** Switches the theme in one go, with colour transitions turned off for a moment. */
+function switchInstantly(theme: Theme) {
   html.classList.add('theme-switching');
-  applyTheme(t);
-  void getComputedStyle(html).backgroundColor; // commit styles before re-enabling transitions
+  applyTheme(theme);
+  void getComputedStyle(html).backgroundColor; // makes the browser apply the new colours before transitions come back
   requestAnimationFrame(() => requestAnimationFrame(() => html.classList.remove('theme-switching')));
 }
 
 let switching = false;
 
-async function toggle(button?: HTMLElement | null) {
+async function toggleTheme(button?: HTMLElement | null) {
   if (switching) return;
-  const target: Theme = currentTheme() === 'dark' ? 'light' : 'dark';
-  store(target);
+  const nextTheme: Theme = currentTheme() === 'dark' ? 'light' : 'dark';
+  saveTheme(nextTheme);
 
   const curtain = document.querySelector<HTMLElement>('[data-theme-curtain]');
   if (prefersReducedMotion() || !curtain) {
-    flip(target);
+    switchInstantly(nextTheme);
     return;
   }
 
   switching = true;
-  button?.classList.add('is-flipping'); // sun/moon morph starts right away
+  button?.classList.add('is-flipping'); // the sun/moon icon starts morphing straight away
   try {
-    // The curtain paints in the *target* theme's background.
-    curtain.dataset.theme = target;
+    // The curtain is painted in the new theme's background. It slides in,
+    // the theme switches behind it, and then it slides off the other side.
+    curtain.dataset.theme = nextTheme;
     curtain.classList.add('is-active');
     await animate(curtain, [{ transform: 'translateX(-100%)' }, { transform: 'translateX(0)' }], {
       duration: dur(450),
       easing: EASE.shutter,
       fill: 'forwards',
     });
-    flip(target);
+    switchInstantly(nextTheme);
     await afterPaint();
     await animate(curtain, [{ transform: 'translateX(0)' }, { transform: 'translateX(100%)' }], {
       duration: dur(550),
@@ -84,29 +91,29 @@ async function toggle(button?: HTMLElement | null) {
     });
   } finally {
     curtain.classList.remove('is-active');
-    curtain.getAnimations().forEach((a) => a.cancel());
+    curtain.getAnimations().forEach((animation) => animation.cancel());
     switching = false;
   }
 }
 
 export function initTheme() {
-  syncChrome(currentTheme());
+  syncThemeUi(currentTheme());
 
-  document.addEventListener('click', (e) => {
-    const btn = (e.target as Element | null)?.closest<HTMLElement>('[data-theme-toggle]');
-    if (btn) toggle(btn);
+  document.addEventListener('click', (event) => {
+    const button = (event.target as Element | null)?.closest<HTMLElement>('[data-theme-toggle]');
+    if (button) toggleTheme(button);
   });
 
-  // Follow the OS while the visitor hasn't picked a theme.
-  systemLight.addEventListener('change', () => {
-    if (!stored()) flip(systemTheme());
+  // Follow the operating system until the visitor picks a theme themselves.
+  systemPrefersLight.addEventListener('change', () => {
+    if (!savedTheme()) switchInstantly(systemTheme());
   });
 
-  // Keep other tabs in sync.
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'theme' && (e.newValue === 'light' || e.newValue === 'dark')) flip(e.newValue);
+  // Keep other open tabs in step.
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'theme' && (event.newValue === 'light' || event.newValue === 'dark')) switchInstantly(event.newValue);
   });
 
-  // Client-side navigation swaps <html> attributes; re-assert the theme after every swap.
-  document.addEventListener('astro:after-swap', () => syncChrome(currentTheme()));
+  // A client-side navigation swaps the <html> attributes, so sync the UI again after each one.
+  document.addEventListener('astro:after-swap', () => syncThemeUi(currentTheme()));
 }

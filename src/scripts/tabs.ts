@@ -1,79 +1,86 @@
-// Experience tabs: WAI-ARIA tabs pattern with roving tabindex, arrow keys,
-// Home/End, and a 2px indicator that slides to the active tab.
+// The experience tabs on the home page. They follow the standard accessible
+// tabs pattern: only the selected tab is in the Tab order, arrow keys move
+// between tabs, Home and End jump to the ends. A thin indicator slides to
+// whichever tab is selected.
 
-import { pageSignal } from './motion';
+import { pageSignal, prefersReducedMotion } from './motion';
 
-const wide = matchMedia('(min-width: 600px)');
+// Side by side (tabs on the left, going down) from 600px up, a scrolling strip above that.
+const sideBySide = matchMedia('(min-width: 600px)');
 
-function setup(root: HTMLElement) {
-  const list = root.querySelector<HTMLElement>('[role="tablist"]');
-  const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-  const indicator = root.querySelector<HTMLElement>('.tabs__indicator');
-  if (!list || !tabs.length) return;
-  const panelOf = (t: HTMLElement) => document.getElementById(t.getAttribute('aria-controls') ?? '');
-  let active = Math.max(0, tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true'));
+function setUpTabs(tabsRoot: HTMLElement) {
+  const tabList = tabsRoot.querySelector<HTMLElement>('[role="tablist"]');
+  const tabs = [...tabsRoot.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+  const indicator = tabsRoot.querySelector<HTMLElement>('.tabs__indicator');
+  if (!tabList || !tabs.length) return;
+  const panelFor = (tab: HTMLElement) => document.getElementById(tab.getAttribute('aria-controls') ?? '');
+  let selected = Math.max(0, tabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'));
 
-  const placeIndicator = () => {
+  // The indicator is 1px in CSS and gets scaled to the tab's size along the strip.
+  const moveIndicator = () => {
     if (!indicator) return;
-    const t = tabs[active];
-    if (wide.matches) {
-      indicator.style.transform = `translateY(${t.offsetTop}px) scaleY(${t.offsetHeight})`;
+    const tab = tabs[selected];
+    if (sideBySide.matches) {
+      indicator.style.transform = `translateY(${tab.offsetTop}px) scaleY(${tab.offsetHeight})`;
     } else {
-      indicator.style.transform = `translateX(${t.offsetLeft}px) scaleX(${t.offsetWidth})`;
+      indicator.style.transform = `translateX(${tab.offsetLeft}px) scaleX(${tab.offsetWidth})`;
     }
   };
 
-  const orient = () => {
-    list.setAttribute('aria-orientation', wide.matches ? 'vertical' : 'horizontal');
+  // When the layout flips between vertical and horizontal, jump the indicator
+  // into place instead of letting it slide diagonally across.
+  const updateOrientation = () => {
+    tabList.setAttribute('aria-orientation', sideBySide.matches ? 'vertical' : 'horizontal');
     indicator?.classList.add('no-anim');
-    placeIndicator();
+    moveIndicator();
     requestAnimationFrame(() => requestAnimationFrame(() => indicator?.classList.remove('no-anim')));
   };
 
-  const select = (i: number, focus: boolean) => {
-    active = (i + tabs.length) % tabs.length;
-    tabs.forEach((t, j) => {
-      const on = j === active;
-      t.setAttribute('aria-selected', String(on));
-      t.tabIndex = on ? 0 : -1;
-      const p = panelOf(t);
-      if (p) p.hidden = !on;
+  const selectTab = (index: number, moveFocus: boolean) => {
+    selected = (index + tabs.length) % tabs.length; // wraps around at both ends
+    tabs.forEach((tab, position) => {
+      const isSelected = position === selected;
+      tab.setAttribute('aria-selected', String(isSelected));
+      tab.tabIndex = isSelected ? 0 : -1;
+      const panel = panelFor(tab);
+      if (panel) panel.hidden = !isSelected;
     });
-    placeIndicator();
-    const t = tabs[active];
-    if (focus) t.focus({ preventScroll: true });
-    if (!wide.matches) {
-      // Keep the active tab in view inside the horizontal strip without scrolling the page.
-      const left = t.offsetLeft - (list.clientWidth - t.offsetWidth) / 2;
-      list.scrollTo({ left, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    moveIndicator();
+
+    const tab = tabs[selected];
+    if (moveFocus) tab.focus({ preventScroll: true });
+    if (!sideBySide.matches) {
+      // Keep the selected tab in view inside the strip, without scrolling the page.
+      const left = tab.offsetLeft - (tabList.clientWidth - tab.offsetWidth) / 2;
+      tabList.scrollTo({ left, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     }
   };
 
-  tabs.forEach((t, i) => {
-    t.addEventListener('click', () => select(i, false));
-    t.addEventListener('keydown', (e) => {
-      const map: Record<string, number> = {
-        ArrowDown: active + 1,
-        ArrowRight: active + 1,
-        ArrowUp: active - 1,
-        ArrowLeft: active - 1,
+  tabs.forEach((tab, position) => {
+    tab.addEventListener('click', () => selectTab(position, false));
+    tab.addEventListener('keydown', (event) => {
+      const targetFor: Record<string, number> = {
+        ArrowDown: selected + 1,
+        ArrowRight: selected + 1,
+        ArrowUp: selected - 1,
+        ArrowLeft: selected - 1,
         Home: 0,
         End: tabs.length - 1,
       };
-      if (!(e.key in map)) return;
-      e.preventDefault();
-      select(map[e.key], true);
+      if (!(event.key in targetFor)) return;
+      event.preventDefault();
+      selectTab(targetFor[event.key], true);
     });
   });
 
   const signal = pageSignal();
-  wide.addEventListener('change', orient, { signal });
-  addEventListener('resize', placeIndicator, { passive: true, signal });
-  document.fonts?.ready.then(placeIndicator);
-  root.classList.add('is-enhanced');
-  orient();
+  sideBySide.addEventListener('change', updateOrientation, { signal });
+  addEventListener('resize', moveIndicator, { passive: true, signal });
+  document.fonts?.ready.then(moveIndicator); // tab sizes change once the web font arrives
+  tabsRoot.classList.add('is-enhanced');
+  updateOrientation();
 }
 
 export function initTabs() {
-  document.querySelectorAll<HTMLElement>('[data-tabs]:not(.is-enhanced)').forEach(setup);
+  document.querySelectorAll<HTMLElement>('[data-tabs]:not(.is-enhanced)').forEach(setUpTabs);
 }

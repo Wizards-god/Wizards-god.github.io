@@ -1,193 +1,215 @@
-// Header: shrink on scroll, hide on scroll down, sliding active-page indicator,
-// section tracking on the home page, and the mobile drawer.
+// The header: it shrinks once you scroll, hides while you scroll down and
+// comes back when you scroll up. It also moves the underline in the nav,
+// follows which section of the home page you're on, and runs the mobile menu.
 
 import { html, dur, EASE, prefersReducedMotion } from './motion';
 
-const header = () => document.querySelector<HTMLElement>('[data-header]');
+const findHeader = () => document.querySelector<HTMLElement>('[data-header]');
 
-// ------------------------------------------------------------ scroll state
+// ------------------------------------------------------------ scrolling
 
-function initScroll() {
-  let lastY = scrollY;
-  let ticking = false;
+function initScrollBehaviour() {
+  let lastScrollY = scrollY;
+  let updateQueued = false;
 
   const update = () => {
-    ticking = false;
-    const h = header();
-    if (!h) return;
-    const y = Math.max(0, scrollY);
-    h.classList.toggle('is-scrolled', y > 8);
+    updateQueued = false;
+    const header = findHeader();
+    if (!header) return;
+    const y = Math.max(0, scrollY); // Safari reports negative values while bouncing at the top
+    header.classList.toggle('is-scrolled', y > 8);
+
+    // Never hide it near the top, while the menu is open, or while it has focus.
     const menuOpen = html.classList.contains('menu-open');
-    const focusInside = h.contains(document.activeElement);
-    if (y < 200 || menuOpen || focusInside) h.classList.remove('is-hidden');
-    else if (y > lastY + 4) h.classList.add('is-hidden');
-    else if (y < lastY - 4) h.classList.remove('is-hidden');
-    lastY = y;
+    const focusInside = header.contains(document.activeElement);
+    if (y < 200 || menuOpen || focusInside) header.classList.remove('is-hidden');
+    else if (y > lastScrollY + 4) header.classList.add('is-hidden');
+    else if (y < lastScrollY - 4) header.classList.remove('is-hidden');
+    lastScrollY = y;
   };
 
+  // At most one update per frame, however many scroll events come in.
   addEventListener(
     'scroll',
     () => {
-      if (!ticking) {
-        ticking = true;
+      if (!updateQueued) {
+        updateQueued = true;
         requestAnimationFrame(update);
       }
     },
     { passive: true },
   );
-  document.addEventListener('focusin', (e) => {
-    if (header()?.contains(e.target as Node)) header()?.classList.remove('is-hidden');
+  // Tabbing into the header brings it back.
+  document.addEventListener('focusin', (event) => {
+    if (findHeader()?.contains(event.target as Node)) findHeader()?.classList.remove('is-hidden');
   });
   document.addEventListener('astro:after-swap', () => {
-    lastY = 0;
-    header()?.classList.remove('is-hidden');
+    lastScrollY = 0;
+    findHeader()?.classList.remove('is-hidden');
     update();
   });
   update();
 }
 
-// ------------------------------------------------------- active indicator
+// ------------------------------------------------------------ nav underline
 
-function keyForPath(path: string): string | null {
-  const seg = path.split('/').filter(Boolean)[0] ?? '';
-  return ['about', 'projects', 'writing', 'coursework'].includes(seg) ? seg : null;
+/** Which nav link a URL belongs to, from its first path segment. */
+function navKeyForPath(path: string): string | null {
+  const firstSegment = path.split('/').filter(Boolean)[0] ?? '';
+  return ['about', 'projects', 'writing', 'coursework'].includes(firstSegment) ? firstSegment : null;
 }
 
-let currentKey: string | null | undefined;
+let activeKey: string | null | undefined;
 
 /**
- * Mark the active nav link. Every label carries its own underline, sized and
+ * Marks a nav link as active. Each label has its own underline, sized and
  * placed by CSS from the text itself, so it lines up at any window size, zoom
  * or font. When the active link changes, the new underline animates in from
- * where the old one was (FLIP), which keeps the sliding effect without any
- * measuring for the resting state.
+ * where the old one was (the FLIP trick), which keeps the sliding look without
+ * measuring anything for the resting state.
  */
-function setActive(key: string | null, animate = true) {
-  if (key === currentKey) return;
+function setActiveLink(key: string | null, animateChange = true) {
+  if (key === activeKey) return;
   const nav = document.querySelector<HTMLElement>('[data-site-nav]');
   if (!nav) return;
-  const lineOf = (k: string | null | undefined) =>
-    k ? nav.querySelector<HTMLElement>(`[data-nav-key="${k}"] .site-nav__line`) : null;
+  const underlineOf = (linkKey: string | null | undefined) =>
+    linkKey ? nav.querySelector<HTMLElement>(`[data-nav-key="${linkKey}"] .site-nav__line`) : null;
 
-  const from = lineOf(currentKey);
-  const fromRect = from ? from.getBoundingClientRect() : null;
-  nav.querySelectorAll<HTMLElement>('[data-nav-key]').forEach((a) => a.classList.toggle('is-active', a.dataset.navKey === key));
-  currentKey = key;
+  const oldUnderline = underlineOf(activeKey);
+  const oldBox = oldUnderline ? oldUnderline.getBoundingClientRect() : null;
+  nav.querySelectorAll<HTMLElement>('[data-nav-key]').forEach((link) => link.classList.toggle('is-active', link.dataset.navKey === key));
+  activeKey = key;
 
-  const to = lineOf(key);
-  if (!to || !animate || prefersReducedMotion()) return;
-  const toRect = to.getBoundingClientRect();
-  if (!toRect.width) return;
-  const first =
-    fromRect && fromRect.width
-      ? `translateX(${fromRect.left - toRect.left}px) scaleX(${fromRect.width / toRect.width})`
+  const newUnderline = underlineOf(key);
+  if (!newUnderline || !animateChange || prefersReducedMotion()) return;
+  const newBox = newUnderline.getBoundingClientRect();
+  if (!newBox.width) return;
+
+  // Start the new underline exactly on top of the old one, then let it slide
+  // home. With no old underline it just grows out from the left.
+  const startingPoint =
+    oldBox && oldBox.width
+      ? `translateX(${oldBox.left - newBox.left}px) scaleX(${oldBox.width / newBox.width})`
       : 'scaleX(0)';
-  to.animate([{ transform: first }, { transform: 'none' }], { duration: dur(320), easing: EASE.ui });
+  newUnderline.animate([{ transform: startingPoint }, { transform: 'none' }], { duration: dur(320), easing: EASE.ui });
 }
 
-function setCurrentPage() {
-  const key = keyForPath(location.pathname);
-  document.querySelectorAll<HTMLAnchorElement>('[data-nav-key]').forEach((a) => {
-    if (a.dataset.navKey === key) a.setAttribute('aria-current', 'page');
-    else a.removeAttribute('aria-current');
+/** Sets aria-current on the link for the page we're on, and returns its key. */
+function markCurrentPage() {
+  const key = navKeyForPath(location.pathname);
+  document.querySelectorAll<HTMLAnchorElement>('[data-nav-key]').forEach((link) => {
+    if (link.dataset.navKey === key) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
   });
   return key;
 }
 
 let sectionObserver: IntersectionObserver | null = null;
 
-function trackHomeSections() {
+/**
+ * On the home page the sections share names with the nav links, so the
+ * underline follows whichever section is in the middle of the screen.
+ */
+function followHomeSections() {
   sectionObserver?.disconnect();
   sectionObserver = null;
   const sections = [...document.querySelectorAll<HTMLElement>('[data-nav-section]')];
   if (!sections.length) return;
-  const visible = new Map<Element, boolean>();
+
+  const isVisible = new Map<Element, boolean>();
   sectionObserver = new IntersectionObserver(
     (entries) => {
-      entries.forEach((e) => visible.set(e.target, e.isIntersecting));
-      const active = sections.find((s) => visible.get(s));
-      setActive(active?.dataset.navSection ?? null);
+      entries.forEach((entry) => isVisible.set(entry.target, entry.isIntersecting));
+      const current = sections.find((section) => isVisible.get(section));
+      setActiveLink(current?.dataset.navSection ?? null);
     },
+    // Only a thin band around the middle of the screen counts as "on" a section.
     { rootMargin: '-45% 0px -50% 0px' },
   );
-  sections.forEach((s) => sectionObserver!.observe(s));
+  sections.forEach((section) => sectionObserver!.observe(section));
 }
 
-function initIndicator() {
-  let first = true;
+function initNavUnderline() {
+  let firstPage = true;
   document.addEventListener('page:init', () => {
-    setActive(setCurrentPage(), !first);
-    first = false;
-    trackHomeSections();
+    setActiveLink(markCurrentPage(), !firstPage); // no slide on the very first page
+    firstPage = false;
+    followHomeSections();
   });
 }
 
-// ------------------------------------------------------------ mobile drawer
+// ------------------------------------------------------------ mobile menu
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-function initDrawer() {
+function initMobileMenu() {
   const drawer = document.querySelector<HTMLElement>('[data-drawer]');
   const backdrop = document.querySelector<HTMLElement>('[data-drawer-backdrop]');
   if (!drawer || !backdrop) return;
-  const toggle = () => document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
-  const outside = () =>
+  const findMenuButton = () => document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  // Everything behind the open menu, which shouldn't be reachable until it closes.
+  const pageBehind = () =>
     [...document.querySelectorAll<HTMLElement>('main, .site-footer, .rails, .skip-link, [data-wordmark]')];
 
-  let open = false;
+  let isOpen = false;
 
-  const setOpen = (next: boolean, { restoreFocus = true } = {}) => {
-    if (next === open) return;
-    open = next;
-    const btn = toggle();
-    html.classList.toggle('menu-open', open);
-    drawer.classList.toggle('is-open', open);
-    drawer.inert = !open;
-    backdrop.hidden = !open;
-    outside().forEach((n) => (n.inert = open));
-    btn?.setAttribute('aria-expanded', String(open));
-    btn?.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-    if (open) drawer.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
-    else if (restoreFocus) btn?.focus({ preventScroll: true });
+  const setOpen = (open: boolean, { restoreFocus = true } = {}) => {
+    if (open === isOpen) return;
+    isOpen = open;
+    const menuButton = findMenuButton();
+    html.classList.toggle('menu-open', isOpen);
+    drawer.classList.toggle('is-open', isOpen);
+    drawer.inert = !isOpen;
+    backdrop.hidden = !isOpen;
+    pageBehind().forEach((element) => (element.inert = isOpen));
+    menuButton?.setAttribute('aria-expanded', String(isOpen));
+    menuButton?.setAttribute('aria-label', isOpen ? 'Close menu' : 'Open menu');
+    if (isOpen) drawer.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true });
+    else if (restoreFocus) menuButton?.focus({ preventScroll: true });
   };
 
   drawer.inert = true;
 
-  document.addEventListener('click', (e) => {
-    const t = e.target as Element;
-    if (t.closest('[data-menu-toggle]')) setOpen(!open);
-    else if (t.closest('[data-drawer-backdrop]')) setOpen(false);
-    else if (open && t.closest('[data-drawer] a')) setOpen(false, { restoreFocus: false });
+  document.addEventListener('click', (event) => {
+    const target = event.target as Element;
+    if (target.closest('[data-menu-toggle]')) setOpen(!isOpen);
+    else if (target.closest('[data-drawer-backdrop]')) setOpen(false);
+    else if (isOpen && target.closest('[data-drawer] a')) setOpen(false, { restoreFocus: false });
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (!open) return;
-    if (e.key === 'Escape') {
-      e.preventDefault();
+  document.addEventListener('keydown', (event) => {
+    if (!isOpen) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
       setOpen(false);
       return;
     }
-    if (e.key !== 'Tab') return;
-    // Trap focus: header controls (theme toggle, menu button) + drawer contents.
-    const pool = [
+    if (event.key !== 'Tab') return;
+
+    // Keep Tab inside the menu: the header's buttons (theme, menu) plus everything in the drawer.
+    const focusable = [
       ...document.querySelectorAll<HTMLElement>('[data-header] [data-theme-toggle], [data-menu-toggle]'),
       ...drawer.querySelectorAll<HTMLElement>(FOCUSABLE),
-    ].filter((n) => n.offsetParent !== null);
-    if (!pool.length) return;
-    const i = pool.indexOf(document.activeElement as HTMLElement);
-    const next = e.shiftKey ? (i <= 0 ? pool.length - 1 : i - 1) : i === pool.length - 1 ? 0 : i + 1;
-    e.preventDefault();
-    pool[next].focus();
+    ].filter((element) => element.offsetParent !== null);
+    if (!focusable.length) return;
+    // Wrap around at both ends.
+    const current = focusable.indexOf(document.activeElement as HTMLElement);
+    let next: number;
+    if (event.shiftKey) next = current <= 0 ? focusable.length - 1 : current - 1;
+    else next = current === focusable.length - 1 ? 0 : current + 1;
+    event.preventDefault();
+    focusable[next].focus();
   });
 
-  matchMedia('(min-width: 768px)').addEventListener('change', (m) => {
-    if (m.matches) setOpen(false, { restoreFocus: false });
+  // The menu only exists on narrow screens, so close it if the window gets wide.
+  matchMedia('(min-width: 768px)').addEventListener('change', (query) => {
+    if (query.matches) setOpen(false, { restoreFocus: false });
   });
   document.addEventListener('astro:before-preparation', () => setOpen(false, { restoreFocus: false }));
 }
 
 export function initHeader() {
-  initScroll();
-  initIndicator();
-  initDrawer();
+  initScrollBehaviour();
+  initNavUnderline();
+  initMobileMenu();
 }

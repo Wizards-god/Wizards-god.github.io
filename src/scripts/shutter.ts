@@ -1,101 +1,113 @@
-// Page-transition shutter: two panels that meet in the middle while the next
-// page loads, then split open once it has painted. Under reduced motion the
-// same element does a short crossfade instead.
+// The page-transition shutter: two panels slide together while the next page
+// loads, then split open once it has painted. With reduced motion the same
+// element does a short crossfade instead.
 
 import { html, animate, dur, EASE } from './motion';
 
-const el = () => document.querySelector<HTMLElement>('[data-shutter]');
+export type ShutterMode = 'shutter' | 'fade' | 'none';
+
+const findShutter = () => document.querySelector<HTMLElement>('[data-shutter]');
 
 let closed = false;
 export const isShutterClosed = () => closed || html.classList.contains('page-entering');
 
-function parts(root: HTMLElement) {
+function partsOf(shutter: HTMLElement) {
   return {
-    top: root.querySelector<HTMLElement>('.shutter__panel--top')!,
-    bottom: root.querySelector<HTMLElement>('.shutter__panel--bottom')!,
-    fade: root.querySelector<HTMLElement>('.shutter__fade')!,
-    label: root.querySelector<HTMLElement>('[data-shutter-label]')!,
+    topPanel: shutter.querySelector<HTMLElement>('.shutter__panel--top')!,
+    bottomPanel: shutter.querySelector<HTMLElement>('.shutter__panel--bottom')!,
+    fadeLayer: shutter.querySelector<HTMLElement>('.shutter__fade')!,
+    label: shutter.querySelector<HTMLElement>('[data-shutter-label]')!,
   };
 }
 
-const cancelAll = (root: HTMLElement) =>
-  root.querySelectorAll('*').forEach((n) => n.getAnimations().forEach((a) => a.cancel()));
+/** Stops anything still animating inside the shutter, so a new move starts clean. */
+const cancelAnimations = (shutter: HTMLElement) =>
+  shutter.querySelectorAll('*').forEach((node) => node.getAnimations().forEach((animation) => animation.cancel()));
 
-/** "parjanya.me/projects" style label for the seam. */
+/** The text shown along the seam while the panels are shut, like "parjanya.me/projects". */
 export function labelFor(url: URL) {
   const path = url.pathname.replace(/\/$/, '');
   return `parjanya.me${path}`;
 }
 
-export async function closeShutter(ms = 500, label = '') {
-  const root = el();
-  if (!root) return;
-  const { top, bottom, label: lab } = parts(root);
-  cancelAll(root);
-  root.classList.add('is-active');
-  lab.textContent = label;
-  const opts: KeyframeAnimationOptions = { duration: dur(ms), easing: EASE.shutter, fill: 'forwards' };
-  const done = Promise.all([
-    animate(top, [{ transform: 'translateY(-100%)' }, { transform: 'translateY(0)' }], opts),
-    animate(bottom, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], opts),
+export async function closeShutter(ms = 500, labelText = '') {
+  const shutter = findShutter();
+  if (!shutter) return;
+  const { topPanel, bottomPanel, label } = partsOf(shutter);
+  cancelAnimations(shutter);
+  shutter.classList.add('is-active');
+  label.textContent = labelText;
+
+  const timing: KeyframeAnimationOptions = { duration: dur(ms), easing: EASE.shutter, fill: 'forwards' };
+  const panelsShut = Promise.all([
+    animate(topPanel, [{ transform: 'translateY(-100%)' }, { transform: 'translateY(0)' }], timing),
+    animate(bottomPanel, [{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], timing),
   ]);
-  if (label) {
-    animate(lab, [{ opacity: 0 }, { opacity: 1 }], {
+  // The label fades in over the last 40% of the close.
+  if (labelText) {
+    animate(label, [{ opacity: 0 }, { opacity: 1 }], {
       duration: dur(ms * 0.4),
       delay: dur(ms * 0.6),
       easing: 'linear',
       fill: 'forwards',
     });
   }
-  await done;
+  await panelsShut;
   closed = true;
 }
 
 export async function openShutter(ms = 500) {
-  const root = el();
-  if (!root) return;
-  const { top, bottom, label } = parts(root);
-  root.classList.add('is-active');
-  const opts: KeyframeAnimationOptions = { duration: dur(ms), easing: EASE.shutter, fill: 'forwards' };
-  // Start the animations before dropping the CSS "closed" state so there is no gap frame.
-  const done = Promise.all([
-    animate(top, [{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], opts),
-    animate(bottom, [{ transform: 'translateY(0)' }, { transform: 'translateY(100%)' }], opts),
+  const shutter = findShutter();
+  if (!shutter) return;
+  const { topPanel, bottomPanel, label } = partsOf(shutter);
+  shutter.classList.add('is-active');
+
+  // The animations start before the CSS "closed" state is dropped, so there's
+  // never a frame where the panels are neither.
+  const timing: KeyframeAnimationOptions = { duration: dur(ms), easing: EASE.shutter, fill: 'forwards' };
+  const panelsOpen = Promise.all([
+    animate(topPanel, [{ transform: 'translateY(0)' }, { transform: 'translateY(-100%)' }], timing),
+    animate(bottomPanel, [{ transform: 'translateY(0)' }, { transform: 'translateY(100%)' }], timing),
   ]);
   if (label.textContent) {
     animate(label, [{ opacity: 1 }, { opacity: 0 }], { duration: dur(ms * 0.3), easing: 'linear', fill: 'forwards' });
   }
   html.classList.remove('page-entering');
-  await done;
-  cancelAll(root);
+
+  await panelsOpen;
+  cancelAnimations(shutter);
   label.textContent = '';
-  root.classList.remove('is-active');
+  shutter.classList.remove('is-active');
   closed = false;
 }
 
-/** Reduced-motion variant: a quick crossfade through the background colour. */
+/** The reduced-motion version of closing: a quick fade to the background colour. */
 export async function fadeOut(ms = 150) {
-  const root = el();
-  if (!root) return;
-  const { fade } = parts(root);
-  cancelAll(root);
-  root.classList.add('is-active');
-  await animate(fade, [{ opacity: 0 }, { opacity: 1 }], { duration: dur(ms), easing: 'linear', fill: 'forwards' });
+  const shutter = findShutter();
+  if (!shutter) return;
+  const { fadeLayer } = partsOf(shutter);
+  cancelAnimations(shutter);
+  shutter.classList.add('is-active');
+  await animate(fadeLayer, [{ opacity: 0 }, { opacity: 1 }], { duration: dur(ms), easing: 'linear', fill: 'forwards' });
   closed = true;
 }
 
+/** ...and of opening. */
 export async function fadeIn(ms = 150) {
-  const root = el();
-  if (!root) return;
-  const { fade } = parts(root);
-  await animate(fade, [{ opacity: 1 }, { opacity: 0 }], { duration: dur(ms), easing: 'linear', fill: 'forwards' });
-  cancelAll(root);
-  root.classList.remove('is-active');
+  const shutter = findShutter();
+  if (!shutter) return;
+  const { fadeLayer } = partsOf(shutter);
+  await animate(fadeLayer, [{ opacity: 1 }, { opacity: 0 }], { duration: dur(ms), easing: 'linear', fill: 'forwards' });
+  cancelAnimations(shutter);
+  shutter.classList.remove('is-active');
   closed = false;
 }
 
-export const shutterMode = () => el()?.dataset.mode ?? 'shutter';
-export const setShutterMode = (m: 'shutter' | 'fade' | 'none') => {
-  const root = el();
-  if (root) root.dataset.mode = m;
+// The mode is stored on the element itself, so it survives the page swap
+// (the shutter is one of the elements the router keeps).
+export const shutterMode = () => findShutter()?.dataset.mode ?? 'shutter';
+
+export const setShutterMode = (mode: ShutterMode) => {
+  const shutter = findShutter();
+  if (shutter) shutter.dataset.mode = mode;
 };

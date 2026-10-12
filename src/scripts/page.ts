@@ -1,25 +1,38 @@
-// Page lifecycle. Decides when a page is "revealed" (after the intro, after
-// the shutter opens, or immediately) and choreographs client-side navigation.
+// How a page arrives. This decides when a page counts as "revealed" (after
+// the intro, after the shutter opens, or straight away) and choreographs
+// client-side navigation between pages.
 //
-// <html> classes (first set by the inline head script):
-//   intro-active   intro overlay is up
-//   page-entering  shutter is closed at first paint (hard refresh within a session)
-//   chrome-wait    header / rails / status pill hidden until reveal
-//   chrome-in      ...then animate in;  chrome-done  settled, no animation
-//   content-wait   [data-enter] elements hidden until reveal;  content-in  animate in
+// Classes on <html> (the head script sets the first ones):
+//   intro-active   the intro overlay is up
+//   page-entering  the shutter starts closed (a refresh partway through a visit)
+//   chrome-wait    header, side rails and status pill hidden until the reveal...
+//   chrome-in      ...then animating in, and chrome-done once they've settled
+//   content-wait   [data-enter] elements hidden until the reveal, then content-in
 //
 // Events on document:
-//   page:init      a page's DOM is ready for per-page setup (initial load and after each swap)
-//   page:revealed  the page is visible; start scroll reveals
+//   page:init      a page's DOM is ready for setup (first load, and after every swap)
+//   page:revealed  the page is visible, so scroll reveals can start
 //   page:leaving   a client-side navigation has started
 
 import { html, afterPaint, prefersReducedMotion, isTouchDevice, wait, dur, emit } from './motion';
-import { closeShutter, openShutter, fadeOut, fadeIn, isShutterClosed, labelFor, setShutterMode, shutterMode } from './shutter';
+import {
+  closeShutter,
+  openShutter,
+  fadeOut,
+  fadeIn,
+  isShutterClosed,
+  labelFor,
+  setShutterMode,
+  shutterMode,
+  type ShutterMode,
+} from './shutter';
 import { applyTheme, currentTheme } from './theme';
 
-let routerNav = false;
-let swapped = false;
+// Both are reset once the page is revealed.
+let navigatingInSite = false; // this page came from a client-side navigation
+let pageSwapped = false; // ...and the router has already swapped in the new page
 
+/** The header and side rails animate in once, then stay put for the rest of the visit. */
 function settleChrome() {
   if (html.classList.contains('chrome-done')) return;
   html.classList.add('chrome-in');
@@ -30,30 +43,32 @@ function settleChrome() {
 }
 
 /**
- * Everything is in place: run entrance animations and start scroll reveals.
- * After the intro the hero was already visible through the letter, so page
- * content does not animate in again (only the chrome does).
+ * Everything is in place: run the entrance animations and start the scroll
+ * reveals. After the intro, the hero has already been seen through the
+ * letter, so the page content doesn't animate in a second time (only the
+ * header and rails do).
  */
 export function pageRevealed({ animateContent = true } = {}) {
   html.classList.remove('page-entering', 'content-wait', 'chrome-wait', 'intro-active', 'intro-reduced');
   settleChrome();
   if (animateContent) html.classList.add('content-in');
-  if (routerNav) focusHeading();
-  emit('page:revealed', { routerNav });
-  routerNav = false;
-  swapped = false;
+  if (navigatingInSite) focusPageHeading();
+  emit('page:revealed');
+  navigatingInSite = false;
+  pageSwapped = false;
 }
 
-function focusHeading() {
-  const h1 = document.querySelector<HTMLElement>('main h1');
-  if (!h1) return;
-  if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1');
-  h1.focus({ preventScroll: true });
+/** After a client-side navigation, move focus to the new page's heading, like a real page load would. */
+function focusPageHeading() {
+  const heading = document.querySelector<HTMLElement>('main h1');
+  if (!heading) return;
+  if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+  heading.focus({ preventScroll: true });
 }
 
-/** First load of a document: reveal now, or after the hard-refresh shutter opens. */
+/** A fresh page load: reveal now, or after the shutter opens if it started closed. */
 export async function initialReveal() {
-  if (html.classList.contains('intro-active')) return; // the intro calls pageRevealed()
+  if (html.classList.contains('intro-active')) return; // the intro reveals the page itself
   if (html.classList.contains('page-entering')) {
     await Promise.race([document.fonts.ready, wait(700)]);
     await afterPaint();
@@ -62,7 +77,7 @@ export async function initialReveal() {
   pageRevealed();
 }
 
-async function onRouterPageLoad() {
+async function onNewPageLoaded() {
   emit('page:init');
   if (isShutterClosed()) {
     await afterPaint();
@@ -73,54 +88,56 @@ async function onRouterPageLoad() {
 }
 
 export function initPage() {
-  document.addEventListener('astro:before-preparation', (ev) => {
-    const e = ev as Event & {
+  document.addEventListener('astro:before-preparation', (event) => {
+    const navigation = event as Event & {
       navigationType: 'push' | 'replace' | 'traverse';
       to: URL;
       loader: () => Promise<void>;
     };
-    routerNav = true;
-    swapped = false;
+    navigatingInSite = true;
+    pageSwapped = false;
     emit('page:leaving');
 
-    const traverse = e.navigationType === 'traverse';
-    let mode: 'shutter' | 'fade' | 'none' = 'shutter';
+    // Back/forward on a touch screen usually means a swipe, and the phone
+    // already animates that, so the shutter stays out of its way.
+    const isBackOrForward = navigation.navigationType === 'traverse';
+    let mode: ShutterMode = 'shutter';
     if (prefersReducedMotion()) mode = 'fade';
-    else if (traverse && isTouchDevice()) mode = 'none'; // don't fight iOS swipe-back
+    else if (isBackOrForward && isTouchDevice()) mode = 'none';
     setShutterMode(mode);
     if (mode === 'none') return;
 
-    const ms = traverse ? 300 : 500;
-    const shutterEl = document.querySelector<HTMLElement>('[data-shutter]');
-    if (shutterEl) shutterEl.dataset.ms = String(ms);
+    const shutterMs = isBackOrForward ? 300 : 500;
+    const shutter = document.querySelector<HTMLElement>('[data-shutter]');
+    if (shutter) shutter.dataset.ms = String(shutterMs);
 
-    // Close the shutter and fetch the next page in parallel.
-    const original = e.loader;
-    e.loader = async () => {
-      const cover = mode === 'fade' ? fadeOut(150) : closeShutter(ms, labelFor(e.to));
-      await Promise.all([cover, original()]);
+    // Close the shutter and fetch the next page at the same time.
+    const loadNextPage = navigation.loader;
+    navigation.loader = async () => {
+      const cover = mode === 'fade' ? fadeOut(150) : closeShutter(shutterMs, labelFor(navigation.to));
+      await Promise.all([cover, loadNextPage()]);
     };
   });
 
-  // Carry our <html> state into the incoming document before attributes are swapped.
-  document.addEventListener('astro:before-swap', (ev) => {
-    const e = ev as Event & { newDocument: Document };
-    const next = e.newDocument.documentElement;
-    applyTheme(currentTheme(), next);
-    const slowVar = html.style.getPropertyValue('--slow');
-    if (slowVar) next.style.setProperty('--slow', slowVar);
-    const keep = ['js', 'reveal-ready'].filter((c) => html.classList.contains(c));
-    keep.push('chrome-done', shutterMode() === 'none' ? 'content-in' : 'content-wait');
-    next.className = keep.join(' ');
+  // Carry the current <html> state over to the incoming page before the router
+  // copies its attributes across.
+  document.addEventListener('astro:before-swap', (event) => {
+    const incoming = (event as Event & { newDocument: Document }).newDocument.documentElement;
+    applyTheme(currentTheme(), incoming);
+    const slowSetting = html.style.getPropertyValue('--slow');
+    if (slowSetting) incoming.style.setProperty('--slow', slowSetting);
+    const classesToKeep = ['js', 'reveal-ready'].filter((className) => html.classList.contains(className));
+    classesToKeep.push('chrome-done', shutterMode() === 'none' ? 'content-in' : 'content-wait');
+    incoming.className = classesToKeep.join(' ');
   });
 
   document.addEventListener('astro:after-swap', () => {
-    swapped = true;
+    pageSwapped = true;
   });
 
-  // Astro also fires page-load for the initial document (on window "load");
-  // that one is handled by initialReveal(), so only react after a swap.
+  // Astro fires page-load for the very first page as well (on window "load"),
+  // but initialReveal() already handles that one, so only react after a swap.
   document.addEventListener('astro:page-load', () => {
-    if (routerNav && swapped) onRouterPageLoad();
+    if (navigatingInSite && pageSwapped) onNewPageLoaded();
   });
 }
