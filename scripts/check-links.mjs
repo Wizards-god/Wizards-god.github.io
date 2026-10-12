@@ -1,15 +1,16 @@
-// Link checker for the built site (dist/). Fails on any broken internal link,
-// missing asset, missing #fragment target, or a missing /resume.pdf.
-// External links are listed but not fetched (keeps CI fast and offline-safe).
+// Checks every link in the built site (dist/). It fails on a broken internal
+// link, a missing file, a #fragment with nothing to jump to, or a missing
+// /resume.pdf. External links are only listed, not fetched, so CI stays fast
+// and works offline.
 //
-// Run after `astro build`: node scripts/check-links.mjs
+// Run it after `astro build`: node scripts/check-links.mjs
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, dirname, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const dist = join(root, 'dist');
+const projectRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const dist = join(projectRoot, 'dist');
 const SITE = 'https://parjanya.me';
 
 if (!existsSync(dist)) {
@@ -17,80 +18,87 @@ if (!existsSync(dist)) {
   process.exit(1);
 }
 
-function walk(dir) {
-  return readdirSync(dir).flatMap((name) => {
-    const p = join(dir, name);
-    return statSync(p).isDirectory() ? walk(p) : [p];
+/** Every file under `directory`, however deep. */
+function allFilesIn(directory) {
+  return readdirSync(directory).flatMap((name) => {
+    const path = join(directory, name);
+    return statSync(path).isDirectory() ? allFilesIn(path) : [path];
   });
 }
 
-const files = walk(dist);
-const htmlFiles = files.filter((f) => f.endsWith('.html'));
+const htmlFiles = allFilesIn(dist).filter((file) => file.endsWith('.html'));
 
-/** Map a site path to the file that would serve it on a static host. */
-function resolve(pathname) {
-  const clean = decodeURIComponent(pathname.split('?')[0]);
-  const candidates = clean.endsWith('/')
-    ? [join(dist, clean, 'index.html')]
-    : [join(dist, clean), join(dist, clean, 'index.html'), join(dist, `${clean}.html`)];
-  return candidates.find((c) => existsSync(c) && statSync(c).isFile()) ?? null;
+/** The file a static host would serve for this path, or null if there isn't one. */
+function fileForPath(pathname) {
+  const path = decodeURIComponent(pathname.split('?')[0]);
+  const candidates = path.endsWith('/')
+    ? [join(dist, path, 'index.html')]
+    : [join(dist, path), join(dist, path, 'index.html'), join(dist, `${path}.html`)];
+  return candidates.find((candidate) => existsSync(candidate) && statSync(candidate).isFile()) ?? null;
 }
 
-const idCache = new Map();
+/** Turns a link on `pagePath` into a full path from the root of the site. */
+function sitePath(link, pagePath) {
+  if (link === '') return pagePath; // a bare "#fragment" on the same page
+  if (link.startsWith('/')) return link;
+  return posix.join(posix.dirname(pagePath + 'x'), link); // relative to the page's folder
+}
+
+// The ids in each page, for checking #fragments.
+const idsByFile = new Map();
 function idsIn(file) {
-  if (!idCache.has(file)) {
+  if (!idsByFile.has(file)) {
     const html = readFileSync(file, 'utf8');
-    const ids = new Set([...html.matchAll(/\sid=["']([^"']+)["']/g)].map((m) => m[1]));
-    idCache.set(file, ids);
+    idsByFile.set(file, new Set([...html.matchAll(/\sid=["']([^"']+)["']/g)].map((match) => match[1])));
   }
-  return idCache.get(file);
+  return idsByFile.get(file);
 }
 
 const problems = [];
-const external = new Set();
-let checked = 0;
+const externalLinks = new Set();
+let checkedCount = 0;
 
 for (const file of htmlFiles) {
+  // Code samples and inline scripts or styles can contain things that look like links.
   const html = readFileSync(file, 'utf8')
-    // Ignore code samples and inline scripts/styles.
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
     .replace(/<pre[\s\S]*?<\/pre>/gi, '');
   const pagePath = '/' + relative(dist, file).replaceAll('\\', '/').replace(/index\.html$/, '');
 
-  const refs = [];
-  for (const m of html.matchAll(/\s(href|src)=["']([^"']+)["']/g)) refs.push(m[2]);
-  for (const m of html.matchAll(/\ssrcset=["']([^"']+)["']/g)) {
-    m[1].split(',').forEach((part) => refs.push(part.trim().split(/\s+/)[0]));
+  const links = [];
+  for (const match of html.matchAll(/\s(href|src)=["']([^"']+)["']/g)) links.push(match[2]);
+  for (const match of html.matchAll(/\ssrcset=["']([^"']+)["']/g)) {
+    match[1].split(',').forEach((candidate) => links.push(candidate.trim().split(/\s+/)[0]));
   }
 
-  for (let ref of refs) {
-    ref = ref.replaceAll('&amp;', '&');
-    if (!ref || /^(mailto:|tel:|data:|javascript:)/i.test(ref)) continue;
-    if (ref.startsWith(SITE)) ref = ref.slice(SITE.length) || '/';
-    if (/^https?:\/\//i.test(ref) || ref.startsWith('//')) {
-      external.add(ref);
+  for (let link of links) {
+    link = link.replaceAll('&amp;', '&');
+    if (!link || /^(mailto:|tel:|data:|javascript:)/i.test(link)) continue;
+    if (link.startsWith(SITE)) link = link.slice(SITE.length) || '/';
+    if (/^https?:\/\//i.test(link) || link.startsWith('//')) {
+      externalLinks.add(link);
       continue;
     }
-    checked++;
-    const [pathPart, hash] = ref.split('#');
-    const abs = pathPart === '' ? pagePath : pathPart.startsWith('/') ? pathPart : posix.join(posix.dirname(pagePath + 'x'), pathPart);
-    const target = resolve(abs);
+
+    checkedCount++;
+    const [pathPart, fragment] = link.split('#');
+    const target = fileForPath(sitePath(pathPart, pagePath));
     if (!target) {
-      problems.push(`${relative(dist, file)} → ${ref} (not found)`);
+      problems.push(`${relative(dist, file)} → ${link} (not found)`);
       continue;
     }
-    if (hash && target.endsWith('.html') && !idsIn(target).has(decodeURIComponent(hash))) {
-      problems.push(`${relative(dist, file)} → ${ref} (no element with id="${hash}")`);
+    if (fragment && target.endsWith('.html') && !idsIn(target).has(decodeURIComponent(fragment))) {
+      problems.push(`${relative(dist, file)} → ${link} (no element with id="${fragment}")`);
     }
   }
 }
 
-// The resume must always resolve: it is linked from the header on every page.
+// The README and older links point at /resume.pdf, so it has to exist.
 if (!existsSync(join(dist, 'resume.pdf'))) problems.push('dist/resume.pdf is missing (public/resume.pdf)');
 if (!existsSync(join(dist, 'CNAME'))) problems.push('dist/CNAME is missing (public/CNAME)');
 
-console.log(`[links] ${htmlFiles.length} pages, ${checked} internal references checked, ${external.size} external links not fetched.`);
+console.log(`[links] ${htmlFiles.length} pages, ${checkedCount} internal references checked, ${externalLinks.size} external links not fetched.`);
 if (problems.length) {
   console.error(`[links] ${problems.length} problem(s):\n  - ${problems.join('\n  - ')}`);
   process.exit(1);

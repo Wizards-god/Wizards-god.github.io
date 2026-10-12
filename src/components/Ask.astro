@@ -32,10 +32,10 @@ const suggestions = ['What are you studying?', 'What courses are you taking?', '
     <div class="ask__body">
       <ul class="ask__suggest" aria-label="Suggested questions">
         {
-          suggestions.map((s) => (
+          suggestions.map((suggestion) => (
             <li>
               <button type="button" class="ask__chip" data-ask-suggest>
-                {s}
+                {suggestion}
               </button>
             </li>
           ))

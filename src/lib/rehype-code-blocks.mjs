@@ -1,42 +1,72 @@
-// Wraps every highlighted <pre> in a figure with a header (language badge +
-// copy button). Done at build time so the header never causes layout shift.
+// A small rehype plugin: wraps every highlighted <pre> in a <figure> with a
+// header bar holding the language name and a copy button. Doing it at build
+// time means the bar is there from the first paint and nothing shifts.
 
-const LABELS = {
-  js: 'JavaScript', javascript: 'JavaScript', ts: 'TypeScript', typescript: 'TypeScript',
-  py: 'Python', python: 'Python', cpp: 'C++', 'c++': 'C++', c: 'C', rs: 'Rust', rust: 'Rust',
-  sh: 'Shell', bash: 'Shell', shell: 'Shell', json: 'JSON', html: 'HTML', css: 'CSS',
-  astro: 'Astro', md: 'Markdown', mdx: 'MDX', yaml: 'YAML', yml: 'YAML', sql: 'SQL',
-  plaintext: 'Text', text: 'Text', txt: 'Text', tex: 'TeX', latex: 'LaTeX',
+const LANGUAGE_NAMES = {
+  js: 'JavaScript',
+  javascript: 'JavaScript',
+  ts: 'TypeScript',
+  typescript: 'TypeScript',
+  py: 'Python',
+  python: 'Python',
+  cpp: 'C++',
+  'c++': 'C++',
+  c: 'C',
+  rs: 'Rust',
+  rust: 'Rust',
+  sh: 'Shell',
+  bash: 'Shell',
+  shell: 'Shell',
+  json: 'JSON',
+  html: 'HTML',
+  css: 'CSS',
+  astro: 'Astro',
+  md: 'Markdown',
+  mdx: 'MDX',
+  yaml: 'YAML',
+  yml: 'YAML',
+  sql: 'SQL',
+  plaintext: 'Text',
+  text: 'Text',
+  txt: 'Text',
+  tex: 'TeX',
+  latex: 'LaTeX',
 };
 
 /** @param {any} node */
-function isCodePre(node) {
+function isHighlightedCode(node) {
   if (node?.type !== 'element' || node.tagName !== 'pre') return false;
-  // Shiki's hast uses a raw `class` string; rehype-parsed trees use `className`.
-  const cls = node.properties?.className ?? node.properties?.class;
-  const list = Array.isArray(cls) ? cls : typeof cls === 'string' ? cls.split(/\s+/) : [];
-  return list.includes('astro-code');
+  // Shiki's own tree has a plain `class` string; trees parsed by rehype use a `className` array.
+  const classes = node.properties?.className ?? node.properties?.class;
+  const classList = Array.isArray(classes) ? classes : typeof classes === 'string' ? classes.split(/\s+/) : [];
+  return classList.includes('astro-code');
 }
 
-/** @param {any} tree */
-function walk(tree, fn) {
+/**
+ * Calls `visit` on every node, depth first. If `visit` returns true it has
+ * replaced the node, so its children aren't visited.
+ * @param {any} tree
+ * @param {(node: any, index: number, parent: any) => boolean} visit
+ */
+function walkTree(tree, visit) {
   if (!tree || !Array.isArray(tree.children)) return;
-  for (let i = 0; i < tree.children.length; i++) {
-    const child = tree.children[i];
-    const replaced = fn(child, i, tree);
+  for (let index = 0; index < tree.children.length; index++) {
+    const child = tree.children[index];
+    const replaced = visit(child, index, tree);
     if (replaced) continue;
-    walk(child, fn);
+    walkTree(child, visit);
   }
 }
 
 export function rehypeCodeBlocks() {
   /** @param {any} tree */
   return (tree) => {
-    walk(tree, (node, index, parent) => {
-      if (!isCodePre(node)) return false;
-      const lang = String(node.properties?.dataLanguage ?? node.properties?.['data-language'] ?? 'text');
-      const label = LABELS[lang.toLowerCase()] ?? lang;
-      node.properties.tabIndex = 0;
+    walkTree(tree, (node, index, parent) => {
+      if (!isHighlightedCode(node)) return false;
+      const language = String(node.properties?.dataLanguage ?? node.properties?.['data-language'] ?? 'text');
+      const languageName = LANGUAGE_NAMES[language.toLowerCase()] ?? language;
+      node.properties.tabIndex = 0; // so keyboard users can scroll long lines
+
       parent.children[index] = {
         type: 'element',
         tagName: 'figure',
@@ -51,7 +81,7 @@ export function rehypeCodeBlocks() {
                 type: 'element',
                 tagName: 'span',
                 properties: { className: ['code-block__lang'] },
-                children: [{ type: 'text', value: label }],
+                children: [{ type: 'text', value: languageName }],
               },
               {
                 type: 'element',

@@ -6,8 +6,8 @@ import { site } from '../../data/site';
 
 const projects = await getProjects();
 const tagCounts = new Map<string, number>();
-projects.forEach((p) => p.data.tags.forEach((t) => tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1)));
-const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([t]) => t);
+projects.forEach((project) => project.data.tags.forEach((tag) => tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)));
+const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([tag]) => tag);
 ---
 
 <BaseLayout
@@ -34,9 +34,9 @@ const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeC
                 <button type="button" class="chip" data-filter-key="tags" data-filter-value="all" aria-pressed="true">
                   all
                 </button>
-                {tags.map((t) => (
-                  <button type="button" class="chip" data-filter-key="tags" data-filter-value={t} aria-pressed="false">
-                    {t}
+                {tags.map((tag) => (
+                  <button type="button" class="chip" data-filter-key="tags" data-filter-value={tag} aria-pressed="false">
+                    {tag}
                   </button>
                 ))}
               </div>
@@ -52,7 +52,7 @@ const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeC
       }
 
       <ul class="project-list" data-filter-list data-layout="rows" data-reveal-stagger>
-        {projects.map((p) => <ProjectItem project={p} />)}
+        {projects.map((project) => <ProjectItem project={project} />)}
       </ul>
       <p class="empty" data-filter-empty hidden>No projects with that tag yet.</p>
       <p class="visually-hidden" aria-live="polite" data-filter-status></p>

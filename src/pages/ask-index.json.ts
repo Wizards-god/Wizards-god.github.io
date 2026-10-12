@@ -45,16 +45,16 @@ export async function GET() {
     getCoursesByTerm(),
   ]);
   const [uiuc, school] = education;
-  const reading = books.filter((b) => b.data.reading);
+  const reading = books.filter((book) => book.data.reading);
 
   const termNote = (courses: (typeof terms)[number]['courses']) => {
-    const statuses = new Set(courses.map((c) => c.data.status));
+    const statuses = new Set(courses.map((course) => course.data.status));
     if (statuses.size !== 1) return '';
     return { completed: ' (done)', 'in progress': ' (taking now)', intended: ' (planned)' }[[...statuses][0]];
   };
 
-  const courseAnswer = (c: (typeof terms)[number]['courses'][number]) => {
-    const { code, title, term, status } = c.data;
+  const courseAnswer = (course: (typeof terms)[number]['courses'][number]) => {
+    const { code, title, term, status } = course.data;
     if (status === 'intended') return `${code}, ${title}, is one I'm planning to take in ${term}.`;
     if (status === 'in progress') return `I'm taking ${code}, ${title}, this semester (${term}).`;
     return `I took ${code}, ${title}, in ${term}.`;
@@ -122,11 +122,11 @@ export async function GET() {
       title: 'Currently',
       url: '/about',
       answer: currently.items
-        .filter((c) => show(c.placeholder))
-        .map((c) => `${c.label[0].toUpperCase()}${c.label.slice(1)}: ${c.text}.`)
+        .filter((item) => show(item.placeholder))
+        .map((item) => `${item.label[0].toUpperCase()}${item.label.slice(1)}: ${item.text}.`)
         .join(' '),
       keywords: ['currently', 'now', 'lately', 'these days', 'recently', 'working on', 'building', 'learning'],
-      text: currently.items.map((c) => `${c.label} ${c.text}`).join(' '),
+      text: currently.items.map((item) => `${item.label} ${item.text}`).join(' '),
     },
     {
       id: 'site',
@@ -162,9 +162,9 @@ export async function GET() {
             id: 'skills',
             title: 'Skills',
             url: '/about',
-            answer: skills.groups.map((g) => `${g.label}: ${list(g.items)}.`).join(' '),
+            answer: skills.groups.map((group) => `${group.label}: ${list(group.items)}.`).join(' '),
             keywords: ['skill', 'programming', 'programming language', 'tools', 'tech', 'technologies', 'proficient', 'experienced'],
-            text: skills.groups.flatMap((g) => [g.label, ...g.items]).join(' '),
+            text: skills.groups.flatMap((group) => [group.label, ...group.items]).join(' '),
           },
         ]
       : []),
@@ -174,20 +174,20 @@ export async function GET() {
       url: '/coursework',
       // Current semester first, then planned ones, then finished ones.
       answer: [...terms]
-        .sort((a, b) => STATUS_ORDER[a.courses[0].data.status] - STATUS_ORDER[b.courses[0].data.status])
-        .map((t) => `${t.term}${termNote(t.courses)}: ${list(t.courses.map((c) => c.data.code))}.`)
+        .sort((first, second) => STATUS_ORDER[first.courses[0].data.status] - STATUS_ORDER[second.courses[0].data.status])
+        .map((semester) => `${semester.term}${termNote(semester.courses)}: ${list(semester.courses.map((course) => course.data.code))}.`)
         .join(' '),
       keywords: ['course', 'coursework', 'class', 'semester', 'taking', 'schedule', 'enrolled', 'gen ed', 'curriculum', 'intended', 'upcoming'],
-      text: terms.flatMap((t) => t.courses.map((c) => `${c.data.code} ${c.data.title} ${t.term}`)).join(' '),
+      text: terms.flatMap((semester) => semester.courses.map((course) => `${course.data.code} ${course.data.title} ${semester.term}`)).join(' '),
     },
-    ...terms.flatMap((t) =>
-      t.courses.map((c) => ({
-        id: `course-${c.id}`,
-        title: `${c.data.code} · ${c.data.title}`,
+    ...terms.flatMap((semester) =>
+      semester.courses.map((course) => ({
+        id: `course-${course.id}`,
+        title: `${course.data.code} · ${course.data.title}`,
         url: '/coursework',
-        answer: courseAnswer(c),
-        keywords: [c.data.code, c.data.code.replace(/\s+/g, ''), t.term, c.data.status, ...(c.data.category === 'gen-ed' ? ['gen ed', 'gened'] : [])],
-        text: `${c.data.code} ${c.data.title} ${t.term}`,
+        answer: courseAnswer(course),
+        keywords: [course.data.code, course.data.code.replace(/\s+/g, ''), semester.term, course.data.status, ...(course.data.category === 'gen-ed' ? ['gen ed', 'gened'] : [])],
+        text: `${course.data.code} ${course.data.title} ${semester.term}`,
       })),
     ),
     {
@@ -202,17 +202,17 @@ export async function GET() {
       id: 'projects',
       title: 'Projects',
       url: '/projects',
-      answer: `Projects on the site: ${list(projects.map((p) => p.data.title))}. Each one has a write-up.`,
+      answer: `Projects on the site: ${list(projects.map((project) => project.data.title))}. Each one has a write-up.`,
       keywords: ['project', 'portfolio', 'built', 'made', 'build', 'side project', 'code'],
-      text: projects.map((p) => `${p.data.title} ${p.data.summary}`).join(' '),
+      text: projects.map((project) => `${project.data.title} ${project.data.summary}`).join(' '),
     },
-    ...projects.map((p) => ({
-      id: `project-${p.id}`,
-      title: p.data.title,
-      url: projectUrl(p),
-      answer: p.data.summary,
-      keywords: [...p.data.tags, ...p.data.stack, p.data.summary],
-      text: `${p.data.summary} ${strip(p.body ?? '')}`,
+    ...projects.map((project) => ({
+      id: `project-${project.id}`,
+      title: project.data.title,
+      url: projectUrl(project),
+      answer: project.data.summary,
+      keywords: [...project.data.tags, ...project.data.stack, project.data.summary],
+      text: `${project.data.summary} ${strip(project.body ?? '')}`,
     })),
     {
       id: 'writing',
@@ -220,68 +220,68 @@ export async function GET() {
       url: '/writing',
       answer: posts.length ? `The latest post is "${posts[0].data.title}". Everything is on the writing page.` : 'No posts yet.',
       keywords: ['blog', 'post', 'writing', 'article', 'essay', 'rss', 'write'],
-      text: posts.map((p) => p.data.title).join(' '),
+      text: posts.map((post) => post.data.title).join(' '),
     },
-    ...posts.map((p) => ({
-      id: `post-${p.id}`,
-      title: p.data.title,
-      url: postUrl(p),
-      answer: p.data.summary,
-      keywords: [...p.data.tags, p.data.summary],
-      text: `${p.data.summary} ${strip(p.body ?? '')}`,
+    ...posts.map((post) => ({
+      id: `post-${post.id}`,
+      title: post.data.title,
+      url: postUrl(post),
+      answer: post.data.summary,
+      keywords: [...post.data.tags, post.data.summary],
+      text: `${post.data.summary} ${strip(post.body ?? '')}`,
     })),
     {
       id: 'books',
       title: 'Bookshelf',
       url: '/bookshelf',
       answer: [
-        reading.length ? `Right now I'm reading ${list(reading.map((b) => b.data.title))}.` : '',
+        reading.length ? `Right now I'm reading ${list(reading.map((book) => book.data.title))}.` : '',
         `There are ${books.length} books on my bookshelf.`,
       ]
         .filter(Boolean)
         .join(' '),
       keywords: ['book', 'bookshelf', 'read', 'reading', 'recommend', 'recommendation', 'favourite', 'library'],
-      text: books.map((b) => `${b.data.title} ${b.data.author}`).join(' '),
+      text: books.map((book) => `${book.data.title} ${book.data.author}`).join(' '),
     },
-    ...books.map((b) => ({
-      id: `book-${b.id}`,
-      title: b.data.title,
+    ...books.map((book) => ({
+      id: `book-${book.id}`,
+      title: book.data.title,
       url: '/bookshelf',
-      answer: `"${b.data.title}" by ${b.data.author} is on my bookshelf.`,
-      keywords: [b.data.author, ...b.data.tags],
-      text: `${b.data.title} ${b.data.author}`,
+      answer: `"${book.data.title}" by ${book.data.author} is on my bookshelf.`,
+      keywords: [book.data.author, ...book.data.tags],
+      text: `${book.data.title} ${book.data.author}`,
     })),
     {
       id: 'experience',
       title: 'Experience',
       url: '/#experience',
-      answer: jobs.length ? `${list(jobs.map((j) => `${j.data.role} at ${j.data.company}`))}.` : 'Nothing listed yet.',
+      answer: jobs.length ? `${list(jobs.map((job) => `${job.data.role} at ${job.data.company}`))}.` : 'Nothing listed yet.',
       keywords: ['experience', 'work', 'job', 'internship', 'research', 'position', 'role'],
-      text: jobs.map((j) => `${j.data.role} ${j.data.company}`).join(' '),
+      text: jobs.map((job) => `${job.data.role} ${job.data.company}`).join(' '),
     },
-    ...jobs.map((j) => ({
-      id: `job-${j.id}`,
-      title: `${j.data.role} @ ${j.data.company}`,
+    ...jobs.map((job) => ({
+      id: `job-${job.id}`,
+      title: `${job.data.role} @ ${job.data.company}`,
       url: '/#experience',
-      answer: `${j.data.role} at ${j.data.company}, ${dateRange(j.data.start, j.data.end)}.`,
-      keywords: [j.data.company, j.data.role],
-      text: j.data.bullets.join(' '),
+      answer: `${job.data.role} at ${job.data.company}, ${dateRange(job.data.start, job.data.end)}.`,
+      keywords: [job.data.company, job.data.role],
+      text: job.data.bullets.join(' '),
     })),
     {
       id: 'awards',
       title: 'Awards',
       url: '/about',
-      answer: awards.length ? `${awards.map((a) => a.data.title).join('; ')}.` : 'Nothing listed yet.',
+      answer: awards.length ? `${awards.map((award) => award.data.title).join('; ')}.` : 'Nothing listed yet.',
       keywords: ['award', 'competition', 'contest', 'prize', 'olympiad', 'achievement', 'honor', 'honour'],
-      text: awards.map((a) => `${a.data.title} ${a.data.issuer}`).join(' '),
+      text: awards.map((award) => `${award.data.title} ${award.data.issuer}`).join(' '),
     },
-    ...awards.map((a) => ({
-      id: `award-${a.id}`,
-      title: a.data.title,
+    ...awards.map((award) => ({
+      id: `award-${award.id}`,
+      title: award.data.title,
       url: '/about',
-      answer: `${a.data.title} (${a.data.issuer}), ${awardDate(a.data.date, a.data.precision)}.${a.data.note ? ' ' + a.data.note : ''}`,
-      keywords: [a.data.issuer],
-      text: `${a.data.title} ${a.data.issuer} ${a.data.note ?? ''}`,
+      answer: `${award.data.title} (${award.data.issuer}), ${awardDate(award.data.date, award.data.precision)}.${award.data.note ? ' ' + award.data.note : ''}`,
+      keywords: [award.data.issuer],
+      text: `${award.data.title} ${award.data.issuer} ${award.data.note ?? ''}`,
     })),
   ];
 
@@ -336,7 +336,7 @@ export async function GET() {
   // Section-level docs win ties against single courses, books or posts.
   const item = /^(course|project|post|book|job|award)-/;
   const body: AskIndex = {
-    docs: docs.map((d) => (item.test(d.id) ? d : { ...d, boost: 1.15 })),
+    docs: docs.map((doc) => (item.test(doc.id) ? doc : { ...doc, boost: 1.15 })),
     synonyms,
     aboutId: 'about',
     email: site.email,

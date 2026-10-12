@@ -11,28 +11,28 @@ const { groups, headingLevel: H = 'h2' } = Astro.props;
 
 <div class="courses" id="course-list">
   {
-    groups.map((g) => {
-      const genEdOnly = g.courses.every((c) => c.data.category !== 'stem');
+    groups.map((semester) => {
+      const genEdOnly = semester.courses.every((course) => course.data.category !== 'stem');
       return (
-        <section class="term" data-reveal aria-label={g.term} data-gened-only={genEdOnly ? "" : undefined} hidden={genEdOnly}>
-          <H class="term__title">{g.term}</H>
+        <section class="term" data-reveal aria-label={semester.term} data-gened-only={genEdOnly ? "" : undefined} hidden={genEdOnly}>
+          <H class="term__title">{semester.term}</H>
           <ul class="term__list">
-            {g.courses.map((c) => (
-              <li class="course" data-category={c.data.category} hidden={c.data.category !== 'stem'}>
-                <span class="course__code">{c.data.code}</span>
+            {semester.courses.map((course) => (
+              <li class="course" data-category={course.data.category} hidden={course.data.category !== 'stem'}>
+                <span class="course__code">{course.data.code}</span>
                 <span class="course__title">
-                  {c.data.title}
-                  {c.data.notesPdf && (
-                    <a href={c.data.notesPdf} class="course__notes link link--quiet">
+                  {course.data.title}
+                  {course.data.notesPdf && (
+                    <a href={course.data.notesPdf} class="course__notes link link--quiet">
                       notes<span class="ext" aria-hidden="true">↗</span>
                     </a>
                   )}
                 </span>
                 <span class="course__status">
-                  {c.data.category === 'gen-ed' && <span class="course__kind">gen ed</span>}
-                  <PlaceholderTag show={c.data.placeholder} />
-                  <span class="status-chip" data-status={c.data.status}>
-                    {c.data.status}
+                  {course.data.category === 'gen-ed' && <span class="course__kind">gen ed</span>}
+                  <PlaceholderTag show={course.data.placeholder} />
+                  <span class="status-chip" data-status={course.data.status}>
+                    {course.data.status}
                   </span>
                 </span>
               </li>

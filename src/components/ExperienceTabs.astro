@@ -61,8 +61,8 @@ const { jobs } = Astro.props;
             <span>{job.data.location}</span>
           </p>
           <ul class="tabs__bullets">
-            {job.data.bullets.map((b) => (
-              <li>{b}</li>
+            {job.data.bullets.map((bullet) => (
+              <li>{bullet}</li>
             ))}
           </ul>
         </div>

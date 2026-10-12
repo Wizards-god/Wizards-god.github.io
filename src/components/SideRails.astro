@@ -13,10 +13,10 @@ const socials = [
   <div class="rail rail--left enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms">
     <ul class="rail__list">
       {
-        socials.map((s) => (
+        socials.map((social) => (
           <li>
-            <a href={s.url} class="rail__icon" target="_blank" rel="noopener noreferrer" aria-label={s.label}>
-              <Icon name={s.icon} />
+            <a href={social.url} class="rail__icon" target="_blank" rel="noopener noreferrer" aria-label={social.label}>
+              <Icon name={social.icon} />
             </a>
           </li>
         ))

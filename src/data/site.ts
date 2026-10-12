@@ -67,5 +67,3 @@ export const site = {
   // appears once a published post with this slug exists.
   chartPostSlug: 'fair-coin',
 } as const;
-
-export type Site = typeof site;

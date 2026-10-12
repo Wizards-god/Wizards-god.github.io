@@ -14,7 +14,7 @@ const photoIsPlaceholder = true;
   <SectionHeading id="about-title">About me</SectionHeading>
   <div class="about">
     <div class="about__text" data-reveal>
-      {bio.short.map((p) => <p>{p}</p>)}
+      {bio.short.map((paragraph) => <p>{paragraph}</p>)}
       <a href="/about" class="more-link">
         more about me <Icon name="arrow-right" size={16} />
       </a>

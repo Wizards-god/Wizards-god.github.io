@@ -9,12 +9,12 @@ export async function GET(context: APIContext) {
     title: `${site.name}: Writing`,
     description: 'Posts on building things, probability and quantitative problems.',
     site: context.site ?? site.domain,
-    items: posts.map((p) => ({
-      title: p.data.title,
-      description: p.data.summary,
-      pubDate: p.data.date,
-      link: postUrl(p),
-      categories: p.data.tags,
+    items: posts.map((post) => ({
+      title: post.data.title,
+      description: post.data.summary,
+      pubDate: post.data.date,
+      link: postUrl(post),
+      categories: post.data.tags,
     })),
     customData: '<language>en-us</language>',
   });

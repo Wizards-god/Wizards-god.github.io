@@ -10,11 +10,11 @@ const { steps, label = 'Pipeline' } = Astro.props;
 <figure class="pipeline not-prose">
   <ol class="pipeline__steps" aria-label={label}>
     {
-      steps.map((s, i) => (
+      steps.map((step, index) => (
         <li class="pipeline__step">
-          <span class="pipeline__index" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
-          <span class="pipeline__title">{s.title}</span>
-          {s.detail && <span class="pipeline__detail">{s.detail}</span>}
+          <span class="pipeline__index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+          <span class="pipeline__title">{step.title}</span>
+          {step.detail && <span class="pipeline__detail">{step.detail}</span>}
         </li>
       ))
     }

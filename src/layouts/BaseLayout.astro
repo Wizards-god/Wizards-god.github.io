@@ -38,11 +38,13 @@ const seo = Astro.props;
     <!-- While the intro plays, keep focus from wandering behind the overlay. -->
     <script is:inline>
       (function () {
+        // While the intro covers the screen, keep keyboard and screen reader
+        // users out of the page underneath. scripts/intro.ts undoes this.
         if (!document.documentElement.classList.contains('intro-active')) return;
-        var nodes = document.querySelectorAll('main, .site-footer, [data-header], .rails, .skip-link, [data-ask]');
-        for (var i = 0; i < nodes.length; i++) {
-          nodes[i].inert = true;
-          nodes[i].setAttribute('data-intro-inert', '');
+        var covered = document.querySelectorAll('main, .site-footer, [data-header], .rails, .skip-link, [data-ask]');
+        for (var i = 0; i < covered.length; i++) {
+          covered[i].inert = true;
+          covered[i].setAttribute('data-intro-inert', '');
         }
       })();
     </script>

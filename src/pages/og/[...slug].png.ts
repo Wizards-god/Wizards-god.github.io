@@ -1,4 +1,5 @@
-// Open Graph images for every page, generated at build time.
+// The preview image for every page (what shows up when a link is shared),
+// drawn at build time by lib/og.ts.
 import type { APIContext } from 'astro';
 import { site } from '../../data/site';
 import { getPosts, getProjects } from '../../lib/content';
@@ -15,16 +16,16 @@ export async function getStaticPaths() {
     { slug: 'resume', card: { title: 'Resume', eyebrow: 'resume', description: 'Under construction. Back soon.', path: '/resume' } },
   ];
 
-  for (const p of await getProjects()) {
+  for (const project of await getProjects()) {
     pages.push({
-      slug: `projects/${p.id}`,
-      card: { title: p.data.title, eyebrow: 'case study', description: p.data.summary, path: `/projects/${p.id}` },
+      slug: `projects/${project.id}`,
+      card: { title: project.data.title, eyebrow: 'case study', description: project.data.summary, path: `/projects/${project.id}` },
     });
   }
-  for (const p of await getPosts()) {
+  for (const post of await getPosts()) {
     pages.push({
-      slug: `writing/${p.id}`,
-      card: { title: p.data.title, eyebrow: 'writing', description: p.data.summary, path: `/writing/${p.id}` },
+      slug: `writing/${post.id}`,
+      card: { title: post.data.title, eyebrow: 'writing', description: post.data.summary, path: `/writing/${post.id}` },
     });
   }
 

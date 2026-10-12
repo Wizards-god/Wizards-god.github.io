@@ -11,17 +11,17 @@ const { awards } = Astro.props;
 
 <ul class="awards" data-reveal-stagger>
   {
-    awards.map((a) => (
+    awards.map((award) => (
       <li class="award" data-reveal>
-        <time class="award__date" datetime={a.data.precision === 'year' ? awardDate(a.data.date, 'year') : isoDate(a.data.date)}>
-          {awardDate(a.data.date, a.data.precision)}
+        <time class="award__date" datetime={award.data.precision === 'year' ? awardDate(award.data.date, 'year') : isoDate(award.data.date)}>
+          {awardDate(award.data.date, award.data.precision)}
         </time>
         <div class="award__body">
           <p class="award__title">
-            {a.data.title} <PlaceholderTag show={a.data.placeholder} />
+            {award.data.title} <PlaceholderTag show={award.data.placeholder} />
           </p>
-          <p class="award__issuer">{a.data.issuer}</p>
-          {a.data.note && <p class="award__note">{a.data.note}</p>}
+          <p class="award__issuer">{award.data.issuer}</p>
+          {award.data.note && <p class="award__note">{award.data.note}</p>}
         </div>
       </li>
     ))

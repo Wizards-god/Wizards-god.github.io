@@ -25,19 +25,19 @@ const posts = await getPosts();
     {
       posts.length ? (
         <ol class="posts" data-reveal-stagger>
-          {posts.map((p) => (
+          {posts.map((post) => (
             <li class="post" data-reveal>
-              <time class="post__date" datetime={isoDate(p.data.date)}>
-                {fullDate(p.data.date)}
+              <time class="post__date" datetime={isoDate(post.data.date)}>
+                {fullDate(post.data.date)}
               </time>
               <div class="post__body">
                 <h2 class="post__title">
-                  <a href={postUrl(p)} class="stretched-link">
-                    {p.data.title}
+                  <a href={postUrl(post)} class="stretched-link">
+                    {post.data.title}
                   </a>
-                  {p.data.draft && <span class="placeholder-tag">draft</span>}
+                  {post.data.draft && <span class="placeholder-tag">draft</span>}
                 </h2>
-                <p class="post__excerpt">{p.data.summary}</p>
+                <p class="post__excerpt">{post.data.summary}</p>
               </div>
             </li>
           ))}

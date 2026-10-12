@@ -25,7 +25,7 @@ const url = projectUrl(project);
       <p>{summary}</p>
     </div>
     <ul class="featured__stack">
-      {stack.map((s) => <li>{s}</li>)}
+      {stack.map((tool) => <li>{tool}</li>)}
     </ul>
     <ProjectLinks links={links} title={title} class="featured__links" />
   </div>

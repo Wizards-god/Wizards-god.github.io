@@ -12,8 +12,8 @@ const featured = await getFeaturedProjects(3);
     <section id="projects" class="section wrap" data-nav-section="projects" aria-labelledby="featured-title">
       <SectionHeading id="featured-title">Selected projects</SectionHeading>
       <div class="featured-list">
-        {featured.map((p, i) => (
-          <FeaturedProject project={p} flip={i % 2 === 1} />
+        {featured.map((project, index) => (
+          <FeaturedProject project={project} flip={index % 2 === 1} />
         ))}
       </div>
       <p class="all-link" data-reveal>

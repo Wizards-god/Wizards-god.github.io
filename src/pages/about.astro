@@ -15,7 +15,7 @@ import { site } from '../data/site';
 
 const awards = await getAwards();
 const show = (p?: boolean) => site.showPlaceholders || !p;
-const currentItems = currently.items.filter((c) => show(c.placeholder));
+const currentItems = currently.items.filter((item) => show(item.placeholder));
 ---
 
 <BaseLayout
@@ -32,7 +32,7 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
 
     <div class="about-intro">
       <div class="about-intro__text" data-enter style="--i: 2">
-        {bio.long.map((p) => <p>{p}</p>)}
+        {bio.long.map((paragraph) => <p>{paragraph}</p>)}
       </div>
       <div class="about-intro__photo framed-wrap" data-enter style="--i: 3">
         <span class="framed">
@@ -52,25 +52,25 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
 
     <section class="section" aria-labelledby="background">
       <SectionHeading id="background">Background</SectionHeading>
-      <Timeline items={education.filter((e) => show(e.placeholder))} />
+      <Timeline items={education.filter((entry) => show(entry.placeholder))} />
     </section>
 
     <section class="section" aria-labelledby="currently">
       <SectionHeading id="currently">Currently</SectionHeading>
       <ul class="currently" data-reveal>
         {
-          currentItems.map((c) => (
+          currentItems.map((item) => (
             <li class="currently__item">
-              <span class="currently__label">{c.label}</span>
+              <span class="currently__label">{item.label}</span>
               <span class="currently__text">
-                {c.href ? (
-                  <a href={c.href} class="link link--underlined">
-                    {c.text}
+                {item.href ? (
+                  <a href={item.href} class="link link--underlined">
+                    {item.text}
                   </a>
                 ) : (
-                  c.text
+                  item.text
                 )}{' '}
-                <PlaceholderTag show={!!c.placeholder} />
+                <PlaceholderTag show={!!item.placeholder} />
               </span>
             </li>
           ))
@@ -87,8 +87,8 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
               Interests <PlaceholderTag show={interests.placeholder} />
             </h2>
             <ul class="chip-list">
-              {interests.items.map((i) => (
-                <li>{i}</li>
+              {interests.items.map((interest) => (
+                <li>{interest}</li>
               ))}
             </ul>
           </div>
@@ -101,8 +101,8 @@ const currentItems = currently.items.filter((c) => show(c.placeholder));
               Languages <PlaceholderTag show={languages.placeholder} />
             </h2>
             <ul class="chip-list">
-              {languages.items.map((l) => (
-                <li>{l}</li>
+              {languages.items.map((language) => (
+                <li>{language}</li>
               ))}
             </ul>
             <p class="hint">

@@ -1,18 +1,22 @@
 import { execSync } from 'node:child_process';
 
-// "Last updated" comes from the latest git commit, falling back to build time.
+// Dates the build needs to know about itself.
+
+/** When the latest commit was made, or the build time if this isn't a git checkout. */
 function lastCommitDate(): Date {
   try {
-    const iso = execSync('git log -1 --format=%cI', { stdio: ['ignore', 'pipe', 'ignore'] })
+    const isoDate = execSync('git log -1 --format=%cI', { stdio: ['ignore', 'pipe', 'ignore'] })
       .toString()
       .trim();
-    const d = new Date(iso);
-    if (!Number.isNaN(d.valueOf())) return d;
+    const date = new Date(isoDate);
+    if (!Number.isNaN(date.valueOf())) return date;
   } catch {
-    /* not a git checkout */
+    // Not a git checkout (or no git installed): fall through to now.
   }
   return new Date();
 }
 
+/** Shown in the footer as "Last updated". */
 export const lastUpdated = lastCommitDate();
+/** Seeds the chart's first frame, so it changes with each day's build. */
 export const buildDate = new Date();

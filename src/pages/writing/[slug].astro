@@ -60,8 +60,8 @@ const minutes = readingTime(post.body ?? '');
     {
       d.tags.length > 0 && (
         <ul class="tag-list post-tags" data-enter style="--i: 4">
-          {d.tags.map((t) => (
-            <li class="tag">#{t}</li>
+          {d.tags.map((tag) => (
+            <li class="tag">#{tag}</li>
           ))}
         </ul>
       )

@@ -49,51 +49,61 @@ const introCfg = site.intro;
 -->
 <script is:inline define:vars={{ introCfg }}>
   (function () {
-    var d = document.documentElement;
-    var c = d.classList;
-    function get(store, k) {
-      try { return window[store].getItem(k); } catch (e) { return null; }
+    var root = document.documentElement;
+    var classes = root.classList;
+
+    // Storage can throw (private mode, blocked cookies), so every read and write is wrapped.
+    function read(storage, key) {
+      try { return window[storage].getItem(key); } catch (error) { return null; }
     }
-    function set(store, k, v) {
-      try { window[store].setItem(k, v); } catch (e) {}
+    function write(storage, key, value) {
+      try { window[storage].setItem(key, value); } catch (error) {}
     }
 
-    var t = get('localStorage', 'theme');
-    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-    d.setAttribute('data-theme', t);
-    d.style.colorScheme = t;
-    var metas = document.querySelectorAll('meta[name="theme-color"]');
-    for (var i = 0; i < metas.length; i++) metas[i].setAttribute('content', t === 'light' ? '#f5f4f0' : '#1c1c1b');
+    // Theme: the saved choice, otherwise whatever the system prefers.
+    var theme = read('localStorage', 'theme');
+    if (theme !== 'light' && theme !== 'dark') {
+      theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    root.setAttribute('data-theme', theme);
+    root.style.colorScheme = theme;
+    var themeColours = document.querySelectorAll('meta[name="theme-color"]');
+    for (var i = 0; i < themeColours.length; i++) {
+      themeColours[i].setAttribute('content', theme === 'light' ? '#f5f4f0' : '#1c1c1b');
+    }
 
-    var q = new URLSearchParams(location.search);
-    var slow = parseFloat(q.get('slow') || '');
-    if (slow > 0) set('sessionStorage', 'slow', String(slow));
-    else slow = parseFloat(get('sessionStorage', 'slow') || '1') || 1;
-    if (slow !== 1) d.style.setProperty('--slow', String(slow));
+    // ?slow=4 makes every animation four times slower, for the rest of the visit.
+    var params = new URLSearchParams(location.search);
+    var slow = parseFloat(params.get('slow') || '');
+    if (slow > 0) write('sessionStorage', 'slow', String(slow));
+    else slow = parseFloat(read('sessionStorage', 'slow') || '1') || 1;
+    if (slow !== 1) root.style.setProperty('--slow', String(slow));
 
-    var rm = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    c.add('js');
-    if (!rm) c.add('reveal-ready');
+    var reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    classes.add('js');
+    if (!reducedMotion) classes.add('reveal-ready');
 
-    var p = q.get('intro');
-    var seen = get('sessionStorage', 'intro-seen') === '1';
-    var play = introCfg.enabled && p !== '0' && (p === '1' || !introCfg.oncePerSession || !seen);
-    if (play) {
-      c.add('intro-active', 'chrome-wait');
-      if (rm) c.add('intro-reduced');
-      set('sessionStorage', 'intro-seen', '1');
-    } else if (seen && p !== '0' && !rm) {
-      c.add('page-entering', 'chrome-wait', 'content-wait');
+    // The intro plays once per visit (?intro=1 forces it, ?intro=0 skips it).
+    // A later full page load in the same visit opens with the shutter instead.
+    var introParam = params.get('intro');
+    var introSeen = read('sessionStorage', 'intro-seen') === '1';
+    var playIntro = introCfg.enabled && introParam !== '0' && (introParam === '1' || !introCfg.oncePerSession || !introSeen);
+    if (playIntro) {
+      classes.add('intro-active', 'chrome-wait');
+      if (reducedMotion) classes.add('intro-reduced');
+      write('sessionStorage', 'intro-seen', '1');
+    } else if (introSeen && introParam !== '0' && !reducedMotion) {
+      classes.add('page-entering', 'chrome-wait', 'content-wait');
     } else {
-      c.add('chrome-in', 'content-in');
-      set('sessionStorage', 'intro-seen', '1');
+      classes.add('chrome-in', 'content-in');
+      write('sessionStorage', 'intro-seen', '1');
     }
 
-    // Fail-safe: if the main script never starts, show everything.
+    // Fail-safe: if the main script never starts, show everything anyway.
     setTimeout(function () {
       if (window.__siteReady) return;
-      c.remove('reveal-ready', 'content-wait', 'chrome-wait', 'page-entering', 'intro-active');
-      c.add('content-in', 'chrome-in');
+      classes.remove('reveal-ready', 'content-wait', 'chrome-wait', 'page-entering', 'intro-active');
+      classes.add('content-in', 'chrome-in');
     }, 4000 * slow);
   })();
 </script>

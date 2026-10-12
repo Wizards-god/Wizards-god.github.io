@@ -1,6 +1,7 @@
-// Build-time content checks (warnings; hard failures live in the Zod schemas):
-//  - the status pill and the "currently" list are dated; warn after 90 days
-//  - list every entry still marked `placeholder: true`
+// Checks that run at the start of every build and print warnings (anything
+// that should actually fail the build lives in the content schemas instead):
+//  - the status pill and the "currently" list carry a date; warn once it's over 90 days old
+//  - list every entry that's still marked `placeholder: true`
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -8,15 +9,16 @@ import { fileURLToPath } from 'node:url';
 
 const MAX_AGE_DAYS = 90;
 
-function walk(dir) {
-  return readdirSync(dir).flatMap((name) => {
-    const p = join(dir, name);
-    return statSync(p).isDirectory() ? walk(p) : [p];
+/** Every file under `directory`, however deep. */
+function allFilesIn(directory) {
+  return readdirSync(directory).flatMap((name) => {
+    const path = join(directory, name);
+    return statSync(path).isDirectory() ? allFilesIn(path) : [path];
   });
 }
 
-function ageInDays(iso) {
-  return Math.floor((Date.now() - new Date(iso).valueOf()) / 86_400_000);
+function daysSince(isoDate) {
+  return Math.floor((Date.now() - new Date(isoDate).valueOf()) / 86_400_000);
 }
 
 /** @returns {import('astro').AstroIntegration} */
@@ -25,50 +27,50 @@ export function siteChecks() {
     name: 'site-checks',
     hooks: {
       'astro:build:start': ({ logger }) => {
-        const root = fileURLToPath(new URL('../../', import.meta.url));
+        const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
 
-        // Dated content lives in TS files; read the dates with a regex to avoid importing TS here.
-        const dated = [
-          { file: 'src/data/site.ts', what: 'status pill (site.status.updated)', re: /status:\s*{[^}]*updated:\s*'([\d-]+)'/s },
-          { file: 'src/data/about.ts', what: '"currently" list (currently.updated)', re: /currently\s*=\s*{\s*updated:\s*'([\d-]+)'/s },
+        // The dates live in TypeScript files, so read them with a regex
+        // rather than importing TypeScript from here.
+        const datedContent = [
+          { file: 'src/data/site.ts', what: 'status pill (site.status.updated)', pattern: /status:\s*{[^}]*updated:\s*'([\d-]+)'/s },
+          { file: 'src/data/about.ts', what: '"currently" list (currently.updated)', pattern: /currently\s*=\s*{\s*updated:\s*'([\d-]+)'/s },
         ];
-        for (const d of dated) {
-          const m = readFileSync(join(root, d.file), 'utf8').match(d.re);
-          if (!m) {
-            logger.warn(`Could not find the date for the ${d.what} in ${d.file}.`);
+        for (const { file, what, pattern } of datedContent) {
+          const match = readFileSync(join(projectRoot, file), 'utf8').match(pattern);
+          if (!match) {
+            logger.warn(`Could not find the date for the ${what} in ${file}.`);
             continue;
           }
-          const age = ageInDays(m[1]);
+          const age = daysSince(match[1]);
           if (age > MAX_AGE_DAYS) {
-            logger.warn(`The ${d.what} was last updated ${age} days ago (${m[1]}). Refresh it in ${d.file}.`);
+            logger.warn(`The ${what} was last updated ${age} days ago (${match[1]}). Refresh it in ${file}.`);
           }
         }
 
         const placeholders = [];
-        const contentDir = join(root, 'src/content');
-        for (const file of walk(contentDir)) {
+        for (const file of allFilesIn(join(projectRoot, 'src/content'))) {
           const text = readFileSync(file, 'utf8');
           if (file.endsWith('.yaml') || file.endsWith('.yml')) {
+            // A YAML list (like the courses): report each placeholder entry by its id.
             const ids = [...text.matchAll(/-\s+id:\s*(\S+)[\s\S]*?(?=\n-\s+id:|$)/g)]
-              .filter((m) => /placeholder:\s*true/.test(m[0]))
-              .map((m) => m[1]);
-            ids.forEach((id) => placeholders.push(`${relative(root, file)}#${id}`));
+              .filter((entry) => /placeholder:\s*true/.test(entry[0]))
+              .map((entry) => entry[1]);
+            ids.forEach((id) => placeholders.push(`${relative(projectRoot, file)}#${id}`));
           } else if (/^---[\s\S]*?placeholder:\s*true[\s\S]*?---/m.test(text)) {
-            placeholders.push(relative(root, file));
+            placeholders.push(relative(projectRoot, file));
           }
         }
         for (const file of ['src/data/about.ts']) {
-          const n = (readFileSync(join(root, file), 'utf8').match(/placeholder:\s*true/g) ?? []).length;
-          if (n) placeholders.push(`${file} (${n} item${n > 1 ? 's' : ''})`);
+          const count = (readFileSync(join(projectRoot, file), 'utf8').match(/placeholder:\s*true/g) ?? []).length;
+          if (count) placeholders.push(`${file} (${count} item${count > 1 ? 's' : ''})`);
         }
-        const portrait = readFileSync(join(root, 'src/components/home/HomeAbout.astro'), 'utf8');
-        if (/photoIsPlaceholder = true/.test(portrait)) placeholders.push('portrait photo (src/assets/portrait-placeholder.png)');
+        const homeAbout = readFileSync(join(projectRoot, 'src/components/home/HomeAbout.astro'), 'utf8');
+        if (/photoIsPlaceholder = true/.test(homeAbout)) placeholders.push('portrait photo (src/assets/portrait-placeholder.png)');
 
         if (placeholders.length) {
+          const list = placeholders.map((path) => path.replaceAll('\\', '/')).join('\n  - ');
           logger.warn(
-            `${placeholders.length} placeholder entr${placeholders.length === 1 ? 'y' : 'ies'} still in the site. Replace or delete before launch:\n  - ${placeholders
-              .map((p) => p.replaceAll('\\', '/'))
-              .join('\n  - ')}`,
+            `${placeholders.length} placeholder entr${placeholders.length === 1 ? 'y' : 'ies'} still in the site. Replace or delete before launch:\n  - ${list}`,
           );
         }
       },

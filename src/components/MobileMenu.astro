@@ -29,10 +29,10 @@ const socials = [
     <a href="/resume" class="btn btn--primary drawer__resume">Resume</a>
     <ul class="drawer__socials">
       {
-        socials.map((s) => (
+        socials.map((social) => (
           <li>
-            <a href={s.url} class="drawer__social" target="_blank" rel="noopener noreferrer" aria-label={s.label}>
-              <Icon name={s.icon} />
+            <a href={social.url} class="drawer__social" target="_blank" rel="noopener noreferrer" aria-label={social.label}>
+              <Icon name={social.icon} />
             </a>
           </li>
         ))

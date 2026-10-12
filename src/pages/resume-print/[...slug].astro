@@ -18,7 +18,7 @@ const show = (p?: boolean) => site.showPlaceholders || !p;
 const jobs = await getExperience();
 const projects = (await getProjects()).slice(0, 4);
 const awards = await getAwards();
-const courses = (await getCoursesByTerm()).flatMap((g) => g.courses).filter((c) => c.data.status !== 'intended' && c.data.category === 'stem');
+const courses = (await getCoursesByTerm()).flatMap((semester) => semester.courses).filter((course) => course.data.status !== 'intended' && course.data.category === 'stem');
 const uiuc = education[0];
 ---
 
@@ -66,8 +66,8 @@ const uiuc = education[0];
           {
             courses.length > 0 && (
               <p class="entry__text">
-                <span class="entry__label">Coursework:</span> {courses.map((c) => `${c.data.title} (${c.data.code})`).join(', ')}
-                {courses.some((c) => c.data.placeholder) && (
+                <span class="entry__label">Coursework:</span> {courses.map((course) => `${course.data.title} (${course.data.code})`).join(', ')}
+                {courses.some((course) => course.data.placeholder) && (
                   <>
                     {' '}
                     <PlaceholderTag />
@@ -78,15 +78,15 @@ const uiuc = education[0];
           }
         </div>
         {
-          education.slice(1).filter((e) => show(e.placeholder)).map((e) => (
+          education.slice(1).filter((entry) => show(entry.placeholder)).map((entry) => (
             <div class="entry">
               <div class="entry__row">
                 <p class="entry__title">
-                  {e.title} <PlaceholderTag show={!!e.placeholder} />
+                  {entry.title} <PlaceholderTag show={!!entry.placeholder} />
                 </p>
-                <p class="entry__date">{e.end ? e.end.slice(0, 4) : ''}</p>
+                <p class="entry__date">{entry.end ? entry.end.slice(0, 4) : ''}</p>
               </div>
-              <p class="entry__sub">{e.subtitle}</p>
+              <p class="entry__sub">{entry.subtitle}</p>
             </div>
           ))
         }
@@ -96,18 +96,18 @@ const uiuc = education[0];
         jobs.length > 0 && (
           <section class="resume__section" aria-labelledby="r-exp">
             <h2 id="r-exp" class="resume__h">Experience</h2>
-            {jobs.map((j) => (
+            {jobs.map((job) => (
               <div class="entry">
                 <div class="entry__row">
                   <p class="entry__title">
-                    {j.data.role}, {j.data.company} <PlaceholderTag show={j.data.placeholder} />
+                    {job.data.role}, {job.data.company} <PlaceholderTag show={job.data.placeholder} />
                   </p>
-                  <p class="entry__date">{dateRange(j.data.start, j.data.end)}</p>
+                  <p class="entry__date">{dateRange(job.data.start, job.data.end)}</p>
                 </div>
-                <p class="entry__sub">{j.data.location}</p>
+                <p class="entry__sub">{job.data.location}</p>
                 <ul class="entry__bullets">
-                  {j.data.bullets.map((b) => (
-                    <li>{b}</li>
+                  {job.data.bullets.map((bullet) => (
+                    <li>{bullet}</li>
                   ))}
                 </ul>
               </div>
@@ -120,18 +120,18 @@ const uiuc = education[0];
         projects.length > 0 && (
           <section class="resume__section" aria-labelledby="r-proj">
             <h2 id="r-proj" class="resume__h">Projects</h2>
-            {projects.map((p) => (
+            {projects.map((project) => (
               <div class="entry">
                 <div class="entry__row">
                   <p class="entry__title">
-                    <a href={projectUrl(p)} class="link">
-                      {p.data.title}
+                    <a href={projectUrl(project)} class="link">
+                      {project.data.title}
                     </a>{' '}
-                    <span class="entry__stack">{p.data.stack.join(', ')}</span> <PlaceholderTag show={p.data.placeholder} />
+                    <span class="entry__stack">{project.data.stack.join(', ')}</span> <PlaceholderTag show={project.data.placeholder} />
                   </p>
-                  <p class="entry__date">{monthYear(p.data.date)}</p>
+                  <p class="entry__date">{monthYear(project.data.date)}</p>
                 </div>
-                <p class="entry__text">{p.data.summary}</p>
+                <p class="entry__text">{project.data.summary}</p>
               </div>
             ))}
           </section>
@@ -145,10 +145,10 @@ const uiuc = education[0];
               Skills <PlaceholderTag show={skills.placeholder} />
             </h2>
             <dl class="skills">
-              {skills.groups.map((g) => (
+              {skills.groups.map((group) => (
                 <div class="skills__row">
-                  <dt>{g.label}</dt>
-                  <dd>{g.items.join(', ')}</dd>
+                  <dt>{group.label}</dt>
+                  <dd>{group.items.join(', ')}</dd>
                 </div>
               ))}
             </dl>
@@ -160,15 +160,15 @@ const uiuc = education[0];
         awards.length > 0 && (
           <section class="resume__section" aria-labelledby="r-awards">
             <h2 id="r-awards" class="resume__h">Awards</h2>
-            {awards.map((a) => (
+            {awards.map((award) => (
               <div class="entry">
                 <div class="entry__row">
                   <p class="entry__title">
-                    {a.data.title} <PlaceholderTag show={a.data.placeholder} />
+                    {award.data.title} <PlaceholderTag show={award.data.placeholder} />
                   </p>
-                  <p class="entry__date">{awardDate(a.data.date, a.data.precision)}</p>
+                  <p class="entry__date">{awardDate(award.data.date, award.data.precision)}</p>
                 </div>
-                <p class="entry__sub">{a.data.issuer}</p>
+                <p class="entry__sub">{award.data.issuer}</p>
               </div>
             ))}
           </section>

@@ -6,8 +6,8 @@ import { site } from '../data/site';
 
 const LIMIT = 6;
 const books = await getBooks();
-const tags = [...new Set(books.flatMap((b) => b.data.tags))].sort();
-const years = [...new Set(books.map((b) => b.data.year))].sort((a, b) => b - a);
+const tags = [...new Set(books.flatMap((book) => book.data.tags))].sort();
+const years = [...new Set(books.map((book) => book.data.year))].sort((a, b) => b - a);
 ---
 
 <BaseLayout
@@ -33,9 +33,9 @@ const years = [...new Set(books.map((b) => b.data.year))].sort((a, b) => b - a);
               <button type="button" class="chip" data-filter-key="tags" data-filter-value="all" aria-pressed="true">
                 all
               </button>
-              {tags.map((t) => (
-                <button type="button" class="chip" data-filter-key="tags" data-filter-value={t} aria-pressed="false">
-                  {t}
+              {tags.map((tag) => (
+                <button type="button" class="chip" data-filter-key="tags" data-filter-value={tag} aria-pressed="false">
+                  {tag}
                 </button>
               ))}
             </div>
@@ -43,9 +43,9 @@ const years = [...new Set(books.map((b) => b.data.year))].sort((a, b) => b - a);
               <button type="button" class="chip" data-filter-key="year" data-filter-value="all" aria-pressed="true">
                 any year
               </button>
-              {years.map((y) => (
-                <button type="button" class="chip" data-filter-key="year" data-filter-value={String(y)} aria-pressed="false">
-                  {y}
+              {years.map((year) => (
+                <button type="button" class="chip" data-filter-key="year" data-filter-value={String(year)} aria-pressed="false">
+                  {year}
                 </button>
               ))}
             </div>
@@ -54,7 +54,7 @@ const years = [...new Set(books.map((b) => b.data.year))].sort((a, b) => b - a);
       }
 
       <ul class="books" data-filter-list data-reveal-stagger>
-        {books.map((b, i) => <BookCard book={b} hidden={i >= LIMIT} />)}
+        {books.map((book, index) => <BookCard book={book} hidden={index >= LIMIT} />)}
       </ul>
       <p class="empty" data-filter-empty hidden>No books match those filters.</p>
       {

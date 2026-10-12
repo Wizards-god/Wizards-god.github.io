@@ -1,17 +1,19 @@
-// Open Graph card renderer (1200×630 PNG). Text is converted to outlines with
-// opentype.js so the output never depends on fonts installed on the build machine.
+// Draws the preview cards (1200×630 PNGs) that show up when a page is shared
+// as a link. The text is turned into outlines with opentype.js, so the cards
+// come out the same no matter which fonts the build machine has installed.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import opentype from 'opentype.js';
 import sharp from 'sharp';
 
-const W = 1200;
-const H = 630;
-const PAD = 80;
+const WIDTH = 1200;
+const HEIGHT = 630;
+const MARGIN = 80;
 
-const C = {
-  bg: '#1c1c1b',
+// The dark theme's colours.
+const COLOURS = {
+  background: '#1c1c1b',
   border: '#343331',
   text: '#ebe9e4',
   muted: '#aeaca6',
@@ -20,117 +22,131 @@ const C = {
 };
 
 type Font = ReturnType<typeof opentype.parse>;
-const cache = new Map<string, Font>();
+const loadedFonts = new Map<string, Font>();
 
-function font(file: string): Font {
-  let f = cache.get(file);
-  if (!f) {
-    const buf = readFileSync(join(process.cwd(), 'node_modules/geist/dist/fonts', file));
-    f = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
-    cache.set(file, f);
+function loadFont(file: string): Font {
+  let font = loadedFonts.get(file);
+  if (!font) {
+    const fontFile = readFileSync(join(process.cwd(), 'node_modules/geist/dist/fonts', file));
+    font = opentype.parse(fontFile.buffer.slice(fontFile.byteOffset, fontFile.byteOffset + fontFile.byteLength));
+    loadedFonts.set(file, font);
   }
-  return f;
+  return font;
 }
 
 const fonts = {
-  medium: () => font('geist-sans/Geist-Medium.ttf'),
-  semibold: () => font('geist-sans/Geist-SemiBold.ttf'),
-  regular: () => font('geist-sans/Geist-Regular.ttf'),
-  mono: () => font('geist-mono/GeistMono-Regular.ttf'),
+  medium: () => loadFont('geist-sans/Geist-Medium.ttf'),
+  semibold: () => loadFont('geist-sans/Geist-SemiBold.ttf'),
+  regular: () => loadFont('geist-sans/Geist-Regular.ttf'),
+  mono: () => loadFont('geist-mono/GeistMono-Regular.ttf'),
 };
 
-function wrap(f: Font, text: string, size: number, maxWidth: number, maxLines: number) {
+/**
+ * Where each glyph goes: its advance width plus kerning against the next one,
+ * plus `tracking` (in em) for letter spacing. This is done by hand because
+ * opentype.js 2.0 produces NaN coordinates when its own letterSpacing option
+ * is combined with kerning.
+ */
+function layOut(font: Font, text: string, size: number, tracking = 0) {
+  const scale = size / font.unitsPerEm;
+  const glyphs = font.stringToGlyphs(text);
+  const positions: number[] = [];
+  let x = 0;
+  glyphs.forEach((glyph, index) => {
+    positions.push(x);
+    const nextGlyph = glyphs[index + 1];
+    x += (glyph.advanceWidth ?? 0) * scale + (nextGlyph ? font.getKerningValue(glyph, nextGlyph) * scale : 0) + tracking * size;
+  });
+  return { glyphs, positions, width: x };
+}
+
+const textWidth = (font: Font, text: string, size: number, tracking = 0) => layOut(font, text, size, tracking).width;
+
+/** Breaks text into lines that fit `maxWidth`. If it runs past `maxLines`, the last line ends in "…". */
+function wrapText(font: Font, text: string, size: number, maxWidth: number, maxLines: number) {
   const words = text.split(/\s+/);
   const lines: string[] = [];
   let line = '';
-  for (const w of words) {
-    const next = line ? `${line} ${w}` : w;
-    if (measure(f, next, size) <= maxWidth || !line) line = next;
+  for (const word of words) {
+    const withWord = line ? `${line} ${word}` : word;
+    if (textWidth(font, withWord, size) <= maxWidth || !line) line = withWord;
     else {
       lines.push(line);
-      line = w;
+      line = word;
     }
   }
   if (line) lines.push(line);
+
   if (lines.length > maxLines) {
     const kept = lines.slice(0, maxLines);
-    let last = kept[maxLines - 1];
-    while (measure(f, `${last}…`, size) > maxWidth && last.includes(' ')) last = last.slice(0, last.lastIndexOf(' '));
-    kept[maxLines - 1] = `${last}…`;
+    let lastLine = kept[maxLines - 1];
+    while (textWidth(font, `${lastLine}…`, size) > maxWidth && lastLine.includes(' ')) {
+      lastLine = lastLine.slice(0, lastLine.lastIndexOf(' '));
+    }
+    kept[maxLines - 1] = `${lastLine}…`;
     return kept;
   }
   return lines;
 }
 
-// Manual layout (advance + pair kerning + tracking). opentype.js 2.0 emits NaN
-// coordinates when its own `letterSpacing` option is combined with kerning.
-function layout(f: Font, text: string, size: number, tracking = 0) {
-  const scale = size / f.unitsPerEm;
-  const glyphs = f.stringToGlyphs(text);
-  const xs: number[] = [];
-  let x = 0;
-  glyphs.forEach((g, i) => {
-    xs.push(x);
-    const next = glyphs[i + 1];
-    x += (g.advanceWidth ?? 0) * scale + (next ? f.getKerningValue(g, next) * scale : 0) + tracking * size;
-  });
-  return { glyphs, xs, width: x };
-}
-
-const measure = (f: Font, text: string, size: number, tracking = 0) => layout(f, text, size, tracking).width;
-
-function path(f: Font, text: string, x: number, y: number, size: number, fill: string, tracking = 0) {
-  const { glyphs, xs } = layout(f, text, size, tracking);
-  const d = glyphs.map((g, i) => g.getPath(x + xs[i], y, size).toPathData(1)).join('');
-  return `<path fill="${fill}" d="${d}"/>`;
+/** One line of text as an SVG <path>, with its baseline at (x, y). */
+function textPath(font: Font, text: string, x: number, y: number, size: number, fill: string, tracking = 0) {
+  const { glyphs, positions } = layOut(font, text, size, tracking);
+  const pathData = glyphs.map((glyph, index) => glyph.getPath(x + positions[index], y, size).toPathData(1)).join('');
+  return `<path fill="${fill}" d="${pathData}"/>`;
 }
 
 export interface OgCard {
   title: string;
   description?: string;
+  /** Small mono label above the title, like "writing". */
   eyebrow?: string;
+  /** The page's path, shown at the bottom as "parjanya.me/…". */
   path: string;
 }
 
-export async function renderOg({ title, description, eyebrow, path: urlPath }: OgCard) {
+export async function renderOg({ title, description, eyebrow, path: pagePath }: OgCard) {
   const medium = fonts.medium();
   const semibold = fonts.semibold();
   const regular = fonts.regular();
   const mono = fonts.mono();
 
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
-  svg += `<rect width="${W}" height="${H}" fill="${C.bg}"/>`;
-  svg += `<rect x="24.5" y="24.5" width="${W - 49}" height="${H - 49}" rx="18" fill="none" stroke="${C.border}"/>`;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">`;
+  svg += `<rect width="${WIDTH}" height="${HEIGHT}" fill="${COLOURS.background}"/>`;
+  svg += `<rect x="24.5" y="24.5" width="${WIDTH - 49}" height="${HEIGHT - 49}" rx="18" fill="none" stroke="${COLOURS.border}"/>`;
 
-  // Wordmark "parjanya." with the full stop in the accent colour.
-  const wmSize = 38;
-  const wm = 'parjanya';
-  svg += path(medium, wm, PAD, PAD + 34, wmSize, C.text, -0.03);
-  svg += path(medium, '.', PAD + measure(medium, wm, wmSize, -0.03), PAD + 34, wmSize, C.accent);
+  // The "parjanya." wordmark, with the full stop in the accent colour.
+  const wordmarkSize = 38;
+  const wordmark = 'parjanya';
+  svg += textPath(medium, wordmark, MARGIN, MARGIN + 34, wordmarkSize, COLOURS.text, -0.03);
+  svg += textPath(medium, '.', MARGIN + textWidth(medium, wordmark, wordmarkSize, -0.03), MARGIN + 34, wordmarkSize, COLOURS.accent);
 
   let y = 250;
   if (eyebrow) {
-    svg += path(mono, eyebrow, PAD, y - 80, 24, C.faint, 0.04);
+    svg += textPath(mono, eyebrow, MARGIN, y - 80, 24, COLOURS.faint, 0.04);
   }
 
+  // Long titles get a smaller size; either way, two lines at most.
   const titleSize = title.length > 36 ? 60 : 72;
-  const titleLines = wrap(semibold, title, titleSize, W - PAD * 2, 2);
-  titleLines.forEach((l, i) => {
-    svg += path(semibold, l, PAD, y + i * titleSize * 1.12, titleSize, C.text, -0.035);
+  const titleLines = wrapText(semibold, title, titleSize, WIDTH - MARGIN * 2, 2);
+  titleLines.forEach((line, index) => {
+    svg += textPath(semibold, line, MARGIN, y + index * titleSize * 1.12, titleSize, COLOURS.text, -0.035);
   });
   y += (titleLines.length - 1) * titleSize * 1.12 + 62;
 
   if (description) {
-    const descSize = 29;
-    const lines = wrap(regular, description, descSize, W - PAD * 2 - 60, titleLines.length > 1 ? 2 : 3);
-    lines.forEach((l, i) => {
-      svg += path(regular, l, PAD, y + i * descSize * 1.45, descSize, C.muted);
+    const descriptionSize = 29;
+    const maxLines = titleLines.length > 1 ? 2 : 3;
+    const lines = wrapText(regular, description, descriptionSize, WIDTH - MARGIN * 2 - 60, maxLines);
+    lines.forEach((line, index) => {
+      svg += textPath(regular, line, MARGIN, y + index * descriptionSize * 1.45, descriptionSize, COLOURS.muted);
     });
   }
 
-  const url = `parjanya.me${urlPath === '/' ? '' : urlPath}`;
-  svg += `<circle cx="${PAD + 5}" cy="${H - PAD - 7}" r="5" fill="${C.accent}"/>`;
-  svg += path(mono, url, PAD + 22, H - PAD, 22, C.faint, 0.02);
+  // The address along the bottom, after a small accent dot.
+  const address = `parjanya.me${pagePath === '/' ? '' : pagePath}`;
+  svg += `<circle cx="${MARGIN + 5}" cy="${HEIGHT - MARGIN - 7}" r="5" fill="${COLOURS.accent}"/>`;
+  svg += textPath(mono, address, MARGIN + 22, HEIGHT - MARGIN, 22, COLOURS.faint, 0.02);
   svg += `</svg>`;
 
   return sharp(Buffer.from(svg)).png({ compressionLevel: 9 }).toBuffer();

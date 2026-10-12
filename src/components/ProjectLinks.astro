@@ -18,10 +18,10 @@ const items = [
 {
   items.length > 0 && (
     <ul class:list={['project-links', className]}>
-      {items.map((l) => (
+      {items.map((link) => (
         <li>
-          <a href={l.href} class="project-links__a" target="_blank" rel="noopener noreferrer" aria-label={l.label}>
-            <Icon name={l.icon} />
+          <a href={link.href} class="project-links__a" target="_blank" rel="noopener noreferrer" aria-label={link.label}>
+            <Icon name={link.icon} />
           </a>
         </li>
       ))}

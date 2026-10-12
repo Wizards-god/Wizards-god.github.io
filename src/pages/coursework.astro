@@ -4,7 +4,7 @@ import CourseList from '../components/CourseList.astro';
 import { getCoursesByTerm } from '../lib/content';
 
 const groups = await getCoursesByTerm();
-const genEds = groups.flatMap((g) => g.courses).filter((c) => c.data.category === 'gen-ed').length;
+const genEds = groups.flatMap((semester) => semester.courses).filter((course) => course.data.category === 'gen-ed').length;
 ---
 
 <BaseLayout
