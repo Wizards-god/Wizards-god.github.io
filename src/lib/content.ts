@@ -4,8 +4,10 @@
 import { getCollection, type CollectionEntry } from 'astro:content';
 import { site } from '../data/site';
 
-/** Placeholder entries only show while site.showPlaceholders is on. */
-const visible = <T extends { data: { placeholder?: boolean } }>(entry: T) => site.showPlaceholders || !entry.data.placeholder;
+/** Placeholder content only shows while site.showPlaceholders is on. */
+export const shouldShow = (isPlaceholder?: boolean) => site.showPlaceholders || !isPlaceholder;
+
+const visible = <T extends { data: { placeholder?: boolean } }>(entry: T) => shouldShow(entry.data.placeholder);
 
 /** By their `order` field, then newest first. */
 export async function getProjects() {

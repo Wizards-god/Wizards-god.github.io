@@ -32,7 +32,7 @@ const projects = defineCollection({
         metrics: z.array(z.object({ label: z.string(), value: z.string() })).default([]),
         placeholder,
       })
-      .refine((p) => !p.featured || p.cover !== undefined, {
+      .refine((project) => !project.featured || project.cover !== undefined, {
         error: 'A featured project needs a `cover` image.',
         path: ['cover'],
       }),

@@ -105,6 +105,7 @@ export async function runIntro(settings: IntroSettings) {
 
   async function typeName() {
     fullStop.classList.add('is-typing');
+    // The "p" is already on screen, so typing starts from the second letter.
     for (let count = 2; count <= letters.length; count++) {
       if (skip.skipped) break;
       await Promise.race([wait(dur(LETTER_DELAY_MS + Math.random() * LETTER_JITTER_MS)), skip.skipRequested]);

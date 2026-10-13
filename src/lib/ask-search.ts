@@ -260,6 +260,7 @@ export function createSearcher(index: AskIndex): Searcher {
   }
 
   function rankDocs(question: string): AskHit[] {
+    // Each word only counts once, even if the question repeats it.
     const seenStems = new Set<string>();
     const questionWords = wordsIn(question).filter((word) => !seenStems.has(word.stem) && seenStems.add(word.stem));
     if (!questionWords.length) return [];

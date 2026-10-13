@@ -53,7 +53,7 @@ function initCopyButtons() {
     const emailButton = target.closest<HTMLElement>('[data-copy-email]');
     if (emailButton) {
       const copied = await copyText(emailButton.dataset.copyEmail ?? '');
-      showToast(copied ? 'Email copied to clipboard' : 'Copy failed. The address is ' + emailButton.dataset.copyEmail);
+      showToast(copied ? 'Email copied to clipboard' : `Copy failed. The address is ${emailButton.dataset.copyEmail}`);
       return;
     }
 

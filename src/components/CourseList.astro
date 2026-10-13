@@ -6,7 +6,7 @@ interface Props {
   groups: { term: string; courses: CollectionEntry<'courses'>[] }[];
   headingLevel?: 'h2' | 'h3';
 }
-const { groups, headingLevel: H = 'h2' } = Astro.props;
+const { groups, headingLevel: Heading = 'h2' } = Astro.props;
 ---
 
 <div class="courses" id="course-list">
@@ -15,7 +15,7 @@ const { groups, headingLevel: H = 'h2' } = Astro.props;
       const genEdOnly = semester.courses.every((course) => course.data.category !== 'stem');
       return (
         <section class="term" data-reveal aria-label={semester.term} data-gened-only={genEdOnly ? "" : undefined} hidden={genEdOnly}>
-          <H class="term__title">{semester.term}</H>
+          <Heading class="term__title">{semester.term}</Heading>
           <ul class="term__list">
             {semester.courses.map((course) => (
               <li class="course" data-category={course.data.category} hidden={course.data.category !== 'stem'}>

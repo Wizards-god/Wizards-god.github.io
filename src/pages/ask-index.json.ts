@@ -11,12 +11,14 @@ import {
   getProjects,
   postUrl,
   projectUrl,
+  shouldShow,
 } from '../lib/content';
 import { awardDate, dateRange } from '../lib/format';
 import type { AskDoc, AskIndex } from '../lib/ask-search';
 
-const strip = (s: string) =>
-  s
+/** Markdown or MDX source → plain words for the index. */
+const plainText = (source: string) =>
+  source
     .replace(/^import .*$/gm, ' ')
     // Maths markup ($...$, $$...$$) would add words like "frac" and "sqrt".
     .replace(/\$\$[\s\S]*?\$\$/g, ' ')
@@ -30,12 +32,12 @@ const strip = (s: string) =>
 const list = (items: string[]) =>
   items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 
-const year = (d?: string | null) => d?.slice(0, 4) ?? '';
+/** "2026" from a date written like "2026-08". */
+const yearOf = (date?: string | null) => date?.slice(0, 4) ?? '';
 
 const STATUS_ORDER = { 'in progress': 0, intended: 1, completed: 2 } as const;
 
 export async function GET() {
-  const show = (p?: boolean) => site.showPlaceholders || !p;
   const [projects, posts, jobs, awards, books, terms] = await Promise.all([
     getProjects(),
     getPosts(),
@@ -65,7 +67,7 @@ export async function GET() {
       id: 'study',
       title: 'Education',
       url: '/about',
-      answer: `I'm doing a Bachelor of Science in Computer Science at the ${uiuc.title} (${year(uiuc.start)}–${year(uiuc.end)}), with an intended Maths minor.`,
+      answer: `I'm doing a Bachelor of Science in Computer Science at the ${uiuc.title} (${yearOf(uiuc.start)}–${yearOf(uiuc.end)}), with an intended Maths minor.`,
       keywords: ['study', 'major', 'minor', 'degree', 'university', 'college', 'school', 'uiuc', 'illinois', 'urbana', 'champaign', 'education', 'year', 'graduate', 'graduation', 'student', 'freshman', 'computer science', 'math', 'maths', 'siebel'],
       text: `${bio.long[0]} ${uiuc.subtitle} ${uiuc.note ?? ''}`,
     },
@@ -73,7 +75,7 @@ export async function GET() {
       id: 'school',
       title: 'Before UIUC',
       url: '/about',
-      answer: `Before UIUC I was at ${school.title} (${year(school.start)}–${year(school.end)}). ${school.note ?? ''}`,
+      answer: `Before UIUC I was at ${school.title} (${yearOf(school.start)}–${yearOf(school.end)}). ${school.note ?? ''}`,
       keywords: ['high school', 'school', 'pre-university', 'pu', 'puc', 'rv', 'jee', 'before', 'physics', 'chemistry', 'india', '12th'],
       text: `${school.title} ${school.subtitle} ${school.note ?? ''}`,
     },
@@ -122,7 +124,7 @@ export async function GET() {
       title: 'Currently',
       url: '/about',
       answer: currently.items
-        .filter((item) => show(item.placeholder))
+        .filter((item) => shouldShow(item.placeholder))
         .map((item) => `${item.label[0].toUpperCase()}${item.label.slice(1)}: ${item.text}.`)
         .join(' '),
       keywords: ['currently', 'now', 'lately', 'these days', 'recently', 'working on', 'building', 'learning'],
@@ -144,7 +146,7 @@ export async function GET() {
       keywords: ['language', 'speak', 'spoken', 'fluent', 'mother tongue', ...languages.items],
       text: languages.items.join(' '),
     },
-    ...(show(interests.placeholder)
+    ...(shouldShow(interests.placeholder)
       ? [
           {
             id: 'interests',
@@ -156,7 +158,7 @@ export async function GET() {
           },
         ]
       : []),
-    ...(show(skills.placeholder)
+    ...(shouldShow(skills.placeholder)
       ? [
           {
             id: 'skills',
@@ -212,7 +214,7 @@ export async function GET() {
       url: projectUrl(project),
       answer: project.data.summary,
       keywords: [...project.data.tags, ...project.data.stack, project.data.summary],
-      text: `${project.data.summary} ${strip(project.body ?? '')}`,
+      text: `${project.data.summary} ${plainText(project.body ?? '')}`,
     })),
     {
       id: 'writing',
@@ -228,7 +230,7 @@ export async function GET() {
       url: postUrl(post),
       answer: post.data.summary,
       keywords: [...post.data.tags, post.data.summary],
-      text: `${post.data.summary} ${strip(post.body ?? '')}`,
+      text: `${post.data.summary} ${plainText(post.body ?? '')}`,
     })),
     {
       id: 'books',
@@ -334,12 +336,12 @@ export async function GET() {
   };
 
   // Section-level docs win ties against single courses, books or posts.
-  const item = /^(course|project|post|book|job|award)-/;
-  const body: AskIndex = {
-    docs: docs.map((doc) => (item.test(doc.id) ? doc : { ...doc, boost: 1.15 })),
+  const singleItem = /^(course|project|post|book|job|award)-/;
+  const index: AskIndex = {
+    docs: docs.map((doc) => (singleItem.test(doc.id) ? doc : { ...doc, boost: 1.15 })),
     synonyms,
     aboutId: 'about',
     email: site.email,
   };
-  return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify(index), { headers: { 'Content-Type': 'application/json' } });
 }

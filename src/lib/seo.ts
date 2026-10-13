@@ -1,5 +1,9 @@
+// Structured data (JSON-LD) for search engines: who I am, what the site is,
+// and the details of each post.
+
 import { site } from '../data/site';
 
+/** Me, for the home and about pages. */
 export const personJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Person',

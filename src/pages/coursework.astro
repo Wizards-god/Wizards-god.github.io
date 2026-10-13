@@ -4,7 +4,7 @@ import CourseList from '../components/CourseList.astro';
 import { getCoursesByTerm } from '../lib/content';
 
 const groups = await getCoursesByTerm();
-const genEds = groups.flatMap((semester) => semester.courses).filter((course) => course.data.category === 'gen-ed').length;
+const genEdCount = groups.flatMap((semester) => semester.courses).filter((course) => course.data.category === 'gen-ed').length;
 ---
 
 <BaseLayout
@@ -23,10 +23,10 @@ const genEds = groups.flatMap((semester) => semester.courses).filter((course) =>
     </header>
 
     {
-      genEds > 0 && (
+      genEdCount > 0 && (
         <p class="controls js-only" data-enter style="--i: 3">
           <button type="button" class="chip" data-gened-toggle aria-pressed="false" aria-controls="course-list">
-            <span data-gened-label>Show gen eds ({genEds})</span>
+            <span data-gened-label>Show gen eds ({genEdCount})</span>
           </button>
           <span class="controls__hint">STEM courses are shown by default.</span>
         </p>

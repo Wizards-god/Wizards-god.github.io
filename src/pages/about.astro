@@ -8,14 +8,12 @@ import PlaceholderTag from '../components/PlaceholderTag.astro';
 import Icon from '../components/Icon.astro';
 import portrait from '../assets/portrait-placeholder.png';
 import { bio, education, currently, interests, languages } from '../data/about';
-import { getAwards } from '../lib/content';
+import { getAwards, shouldShow } from '../lib/content';
 import { fullDate } from '../lib/format';
 import { personJsonLd } from '../lib/seo';
-import { site } from '../data/site';
 
 const awards = await getAwards();
-const show = (p?: boolean) => site.showPlaceholders || !p;
-const currentItems = currently.items.filter((item) => show(item.placeholder));
+const currentItems = currently.items.filter((item) => shouldShow(item.placeholder));
 ---
 
 <BaseLayout
@@ -52,7 +50,7 @@ const currentItems = currently.items.filter((item) => show(item.placeholder));
 
     <section class="section" aria-labelledby="background">
       <SectionHeading id="background">Background</SectionHeading>
-      <Timeline items={education.filter((entry) => show(entry.placeholder))} />
+      <Timeline items={education.filter((entry) => shouldShow(entry.placeholder))} />
     </section>
 
     <section class="section" aria-labelledby="currently">
@@ -81,7 +79,7 @@ const currentItems = currently.items.filter((item) => show(item.placeholder));
 
     <section class="section two-col" aria-label="Interests and languages">
       {
-        show(interests.placeholder) && (
+        shouldShow(interests.placeholder) && (
           <div data-reveal>
             <h2 class="sub-heading">
               Interests <PlaceholderTag show={interests.placeholder} />
@@ -95,7 +93,7 @@ const currentItems = currently.items.filter((item) => show(item.placeholder));
         )
       }
       {
-        show(languages.placeholder) && (
+        shouldShow(languages.placeholder) && (
           <div data-reveal>
             <h2 class="sub-heading">
               Languages <PlaceholderTag show={languages.placeholder} />

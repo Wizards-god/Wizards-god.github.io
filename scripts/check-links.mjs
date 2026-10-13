@@ -41,7 +41,9 @@ function fileForPath(pathname) {
 function sitePath(link, pagePath) {
   if (link === '') return pagePath; // a bare "#fragment" on the same page
   if (link.startsWith('/')) return link;
-  return posix.join(posix.dirname(pagePath + 'x'), link); // relative to the page's folder
+  // Relative to the page's folder. Page paths end in "/" (like /writing/), and
+  // dirname would drop that last folder, so a dummy file name goes on first.
+  return posix.join(posix.dirname(pagePath + 'x'), link);
 }
 
 // The ids in each page, for checking #fragments.

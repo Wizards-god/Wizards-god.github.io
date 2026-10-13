@@ -9,12 +9,12 @@ import { monthYear } from '../../lib/format';
 
 export async function getStaticPaths() {
   const projects = await getProjects();
-  return projects.map((project, i) => ({
+  return projects.map((project, position) => ({
     params: { slug: project.id },
     props: {
       project,
-      prev: projects[i - 1] ?? null,
-      next: projects[i + 1] ?? null,
+      prev: projects[position - 1] ?? null,
+      next: projects[position + 1] ?? null,
     },
   }));
 }
@@ -27,38 +27,38 @@ interface Props {
 
 const { project, prev, next } = Astro.props;
 const { Content } = await render(project);
-const d = project.data;
+const details = project.data;
 const links = [
-  d.links.github && { href: d.links.github, label: 'GitHub' },
-  d.links.live && { href: d.links.live, label: 'Live' },
-  d.links.paper && { href: d.links.paper, label: 'Paper' },
+  details.links.github && { href: details.links.github, label: 'GitHub' },
+  details.links.live && { href: details.links.live, label: 'Live' },
+  details.links.paper && { href: details.links.paper, label: 'Paper' },
 ].filter(Boolean) as { href: string; label: string }[];
 ---
 
 <ReadingLayout
-  title={d.title}
-  description={d.summary}
+  title={details.title}
+  description={details.summary}
   ogImage={`/og/projects/${project.id}.png`}
   type="article"
-  published={d.date}
+  published={details.date}
   back={{ href: '/projects', label: 'all projects' }}
 >
   <Fragment slot="header">
     <p class="eyebrow" data-enter style="--i: 1">case study</p>
     <h1 class="page-title case__title" data-enter style="--i: 2" tabindex="-1">
-      {d.title}
-      <PlaceholderTag show={d.placeholder} />
+      {details.title}
+      <PlaceholderTag show={details.placeholder} />
     </h1>
-    <p class="lede case__summary" data-enter style="--i: 3">{d.summary}</p>
+    <p class="lede case__summary" data-enter style="--i: 3">{details.summary}</p>
     <p class="case__meta" data-enter style="--i: 4">
-      <span>{monthYear(d.date)}</span>
+      <span>{monthYear(details.date)}</span>
       <span aria-hidden="true">·</span>
-      <span class="status-chip" data-status={d.status}>{d.status === 'in-progress' ? 'in progress' : 'shipped'}</span>
+      <span class="status-chip" data-status={details.status}>{details.status === 'in-progress' ? 'in progress' : 'shipped'}</span>
       {
-        d.stack.length > 0 && (
+        details.stack.length > 0 && (
           <>
             <span aria-hidden="true">·</span>
-            <span>{d.stack.join(' · ')}</span>
+            <span>{details.stack.join(' · ')}</span>
           </>
         )
       }
@@ -78,9 +78,9 @@ const links = [
 
   <Fragment slot="before">
     {
-      d.metrics.length > 0 && (
+      details.metrics.length > 0 && (
         <dl class="stats" data-enter style="--i: 5">
-          {d.metrics.map((metric) => (
+          {details.metrics.map((metric) => (
             <div class="stat">
               <dt>{metric.label}</dt>
               <dd>{metric.value}</dd>
@@ -90,12 +90,12 @@ const links = [
       )
     }
     {
-      d.cover && (
+      details.cover && (
         <figure class="case__cover" data-enter style="--i: 5">
           <span class="duotone">
             <Picture
-              src={d.cover}
-              alt={d.coverAlt}
+              src={details.cover}
+              alt={details.coverAlt}
               formats={['avif']}
               fallbackFormat="webp"
               widths={[480, 720, 1080, 1360]}

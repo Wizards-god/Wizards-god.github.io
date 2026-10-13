@@ -135,6 +135,8 @@ const MARK_HEIGHT = 0.62; // how much of the tile the "p" fills, top to bottom
 const TILE = 1000;
 const markScale = (TILE * MARK_HEIGHT) / (pBox.y2 - pBox.y1);
 const offsetX = TILE / 2 - markCentreX * markScale;
+// The middle of the x-height band goes 60 units below the tile's centre,
+// which looked better balanced by eye than dead centre.
 const offsetY = TILE / 2 - markCentreY * markScale + 60;
 
 const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TILE} ${TILE}">

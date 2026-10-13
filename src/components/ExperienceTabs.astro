@@ -12,15 +12,15 @@ const { jobs } = Astro.props;
 <div class="tabs" data-tabs data-reveal>
   <div class="tabs__list" role="tablist" aria-label="Experience" aria-orientation="vertical">
     {
-      jobs.map((job, i) => (
+      jobs.map((job, position) => (
         <button
           type="button"
           role="tab"
           id={`tab-${job.id}`}
           class="tabs__tab"
-          aria-selected={i === 0 ? 'true' : 'false'}
+          aria-selected={position === 0 ? 'true' : 'false'}
           aria-controls={`panel-${job.id}`}
-          tabindex={i === 0 ? 0 : -1}
+          tabindex={position === 0 ? 0 : -1}
         >
           {job.data.company}
         </button>
@@ -31,14 +31,14 @@ const { jobs } = Astro.props;
 
   <div class="tabs__panels">
     {
-      jobs.map((job, i) => (
+      jobs.map((job, position) => (
         <div
           role="tabpanel"
           id={`panel-${job.id}`}
           class="tabs__panel"
           aria-labelledby={`tab-${job.id}`}
           tabindex="0"
-          hidden={i !== 0}
+          hidden={position !== 0}
         >
           <h3 class="tabs__role">
             {job.data.role}{' '}

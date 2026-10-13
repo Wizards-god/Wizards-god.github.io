@@ -7,14 +7,13 @@ import Icon from '../../components/Icon.astro';
 import PlaceholderTag from '../../components/PlaceholderTag.astro';
 import { site } from '../../data/site';
 import { education, skills } from '../../data/about';
-import { getExperience, getProjects, getAwards, getCoursesByTerm, projectUrl } from '../../lib/content';
+import { getExperience, getProjects, getAwards, getCoursesByTerm, projectUrl, shouldShow } from '../../lib/content';
 import { awardDate, dateRange, monthYear } from '../../lib/format';
 
 export function getStaticPaths() {
   return process.env.RESUME_PRINT === '1' ? [{ params: { slug: undefined } }] : [];
 }
 
-const show = (p?: boolean) => site.showPlaceholders || !p;
 const jobs = await getExperience();
 const projects = (await getProjects()).slice(0, 4);
 const awards = await getAwards();
@@ -78,7 +77,7 @@ const uiuc = education[0];
           }
         </div>
         {
-          education.slice(1).filter((entry) => show(entry.placeholder)).map((entry) => (
+          education.slice(1).filter((entry) => shouldShow(entry.placeholder)).map((entry) => (
             <div class="entry">
               <div class="entry__row">
                 <p class="entry__title">
@@ -139,7 +138,7 @@ const uiuc = education[0];
       }
 
       {
-        show(skills.placeholder) && (
+        shouldShow(skills.placeholder) && (
           <section class="resume__section" aria-labelledby="r-skills">
             <h2 id="r-skills" class="resume__h">
               Skills <PlaceholderTag show={skills.placeholder} />
