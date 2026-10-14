@@ -1,9 +1,7 @@
 ---
 title: "The Man Who Solved the Market"
 author: "Gregory Zuckerman"
-year: 2025
-favorite: true
+status: planned
 tags: [markets, history]
-reflection: A short reflection is on its way.
-placeholder: true
+reflection: Thoughts once I've read it.
 ---

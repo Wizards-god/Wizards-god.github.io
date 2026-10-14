@@ -8,10 +8,13 @@ interface Props {
   hidden?: boolean;
 }
 const { book, hidden = false } = Astro.props;
-const { title, author, reflection, tags, url, year, reading, placeholder } = book.data;
+const { title, author, reflection, tags, url, year, status, placeholder } = book.data;
+
+// The small line after the author: where I am with this book.
+const progress = { reading: 'reading now', planned: 'on my list', read: `read ${year}` }[status];
 ---
 
-<li class="book" data-item data-tags={tags.join('|')} data-year={String(year)} hidden={hidden} data-reveal>
+<li class="book" data-item data-tags={tags.join('|')} data-year={year ? String(year) : undefined} hidden={hidden} data-reveal>
   <article class="book__card card card--lift">
     <div class="book__top">
       <Icon name="book-open" size={28} class="book__icon" />
@@ -24,7 +27,7 @@ const { title, author, reflection, tags, url, year, reading, placeholder } = boo
       }
     </div>
     <h2 class="book__title">{title}</h2>
-    <p class="book__author">{author} <span aria-hidden="true">·</span> <span class="book__year">{reading ? 'reading now' : `read ${year}`}</span></p>
+    <p class="book__author">{author} <span aria-hidden="true">·</span> <span class="book__year">{progress}</span></p>
     <p class="book__reflection">{reflection}</p>
     <ul class="book__tags tag-list">
       {tags.map((tag) => <li class="tag">{tag}</li>)}

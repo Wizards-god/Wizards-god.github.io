@@ -58,9 +58,12 @@ const courses = defineCollection({
   schema: z.object({
     code: z.string(),
     title: z.string(),
-    term: z.string().regex(/^(Spring|Summer|Fall|Winter) \d{4}$/, 'term must look like "Fall 2026"'),
+    // A semester, or "Advanced standing" for credit I came in with (see ADVANCED_STANDING in src/lib/content.ts).
+    term: z.union([
+      z.literal('Advanced standing'),
+      z.string().regex(/^(Spring|Summer|Fall|Winter) \d{4}$/, 'term must look like "Fall 2026" or be "Advanced standing"'),
+    ]),
     status: z.enum(['completed', 'in progress', 'intended']),
-    credits: z.number().optional(),
     // STEM courses show by default; gen eds sit behind a toggle on /coursework.
     category: z.enum(['stem', 'gen-ed']).default('stem'),
     notesPdf: z.string().optional(),
@@ -83,18 +86,28 @@ const awards = defineCollection({
 
 const books = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/books' }),
-  schema: z.object({
-    title: z.string(),
-    author: z.string(),
-    year: z.number().int(),
-    tags: z.array(z.string()).default([]),
-    reflection: z.string(),
-    url: z.url().optional(),
-    favorite: z.boolean().default(false),
-    /** Still reading it: shown as "reading now" and listed first. */
-    reading: z.boolean().default(false),
-    placeholder,
-  }),
+  schema: z
+    .object({
+      title: z.string(),
+      author: z.string(),
+      /**
+       * read: finished, with the year I read it.
+       * reading: shown as "reading now" and listed first.
+       * planned: on my list, shown last.
+       */
+      status: z.enum(['read', 'reading', 'planned']),
+      /** The year I finished it. Only for books I've read. */
+      year: z.number().int().optional(),
+      tags: z.array(z.string()).default([]),
+      reflection: z.string(),
+      url: z.url().optional(),
+      favorite: z.boolean().default(false),
+      placeholder,
+    })
+    .refine((book) => book.status !== 'read' || book.year !== undefined, {
+      error: 'A book I have read needs the `year` I read it.',
+      path: ['year'],
+    }),
 });
 
 const writing = defineCollection({

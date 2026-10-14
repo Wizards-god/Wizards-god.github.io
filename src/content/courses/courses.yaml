@@ -1,4 +1,5 @@
-# UIUC coursework. Terms look like "Fall 2026".
+# UIUC coursework. Terms look like "Fall 2026", or "Advanced standing" for
+# credit I came in with, which is listed below every semester.
 # status: completed | in progress | intended
 # category: stem (shown by default) | gen-ed (shown with the "gen eds" toggle)
 # Optional notesPdf: a file in public/notes/, e.g. /notes/cs124-fall-2026.pdf
@@ -9,26 +10,22 @@
   title: Introduction to Computer Science I (Kotlin)
   term: Fall 2026
   status: in progress
-  credits: 3
 - id: math241h
   code: MATH 241H
   title: Calculus III (Honours)
   term: Fall 2026
   status: in progress
-  credits: 4
 - id: cwl251
   code: CWL 251
   title: Viking Mythology
   term: Fall 2026
   status: in progress
-  credits: 3
   category: gen-ed
 - id: macs100
   code: MACS 100
   title: Intro to Popular TV & Movies
   term: Fall 2026
   status: in progress
-  credits: 3
   category: gen-ed
 
 # ---- Spring 2027 ----
@@ -37,22 +34,40 @@
   title: Introduction to Computer Science II (C++)
   term: Spring 2027
   status: intended
-  credits: 3
 - id: cs173
   code: CS 173
   title: Discrete Structures
   term: Spring 2027
   status: intended
-  credits: 3
 - id: stat400
   code: STAT 400
   title: Statistics and Probability I
   term: Spring 2027
   status: intended
-  credits: 4
 - id: math314h
   code: MATH 314H
   title: Introduction to Higher Mathematics (Honours)
   term: Spring 2027
   status: intended
-  credits: 4
+
+# ---- Advanced standing ----
+- id: math220
+  code: MATH 220
+  title: Calculus
+  term: Advanced standing
+  status: completed
+- id: math231
+  code: MATH 231
+  title: Calculus II
+  term: Advanced standing
+  status: completed
+- id: phys211
+  code: PHYS 211
+  title: 'University Physics: Mechanics'
+  term: Advanced standing
+  status: completed
+- id: phys212
+  code: PHYS 212
+  title: 'University Physics: Electricity and Magnetism'
+  term: Advanced standing
+  status: completed

@@ -3,6 +3,7 @@
 import { site } from '../data/site';
 import { bio, currently, education, interests, languages, skills } from '../data/about';
 import {
+  ADVANCED_STANDING,
   getAwards,
   getBooks,
   getCoursesByTerm,
@@ -47,7 +48,14 @@ export async function GET() {
     getCoursesByTerm(),
   ]);
   const [uiuc, school] = education;
-  const reading = books.filter((book) => book.data.reading);
+  const reading = books.filter((book) => book.data.status === 'reading');
+
+  const bookAnswer = (book: (typeof books)[number]) => {
+    const { title, author, status } = book.data;
+    if (status === 'reading') return `I'm reading "${title}" by ${author} at the moment.`;
+    if (status === 'planned') return `"${title}" by ${author} is on my list to read.`;
+    return `"${title}" by ${author} is on my bookshelf.`;
+  };
 
   const termNote = (courses: (typeof terms)[number]['courses']) => {
     const statuses = new Set(courses.map((course) => course.data.status));
@@ -59,6 +67,7 @@ export async function GET() {
     const { code, title, term, status } = course.data;
     if (status === 'intended') return `${code}, ${title}, is one I'm planning to take in ${term}.`;
     if (status === 'in progress') return `I'm taking ${code}, ${title}, this semester (${term}).`;
+    if (term === ADVANCED_STANDING) return `I have credit for ${code}, ${title}, through advanced standing.`;
     return `I took ${code}, ${title}, in ${term}.`;
   };
 
@@ -249,7 +258,7 @@ export async function GET() {
       id: `book-${book.id}`,
       title: book.data.title,
       url: '/bookshelf',
-      answer: `"${book.data.title}" by ${book.data.author} is on my bookshelf.`,
+      answer: bookAnswer(book),
       keywords: [book.data.author, ...book.data.tags],
       text: `${book.data.title} ${book.data.author}`,
     })),

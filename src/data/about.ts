@@ -27,8 +27,10 @@ export const bio = {
     "I'm Parjanya. I'm studying for a Bachelor of Science in Computer Science in the Siebel School of Computing and Data Science at the University of Illinois Urbana-Champaign, with an intended Maths minor. I started in August 2026 and should graduate in May 2030.",
     "I want to end up in quantitative research. For now that means getting properly good at probability and statistics, algorithms and systems, and getting into the habit of double-checking my work. I build software to explore algorithms, simulation, probability and quantitative systems, and this site is where I put it: projects with write-ups of what worked and what didn't, notes from my courses, and the odd longer post.",
     "There's a lot happening in tech right now, from AI and space exploration to VR and clean energy, and far more ideas around than anyone could build. The hard part is turning one into something real. As a student, my main goal is to learn about myself, about other people and about how the world works, so that I can find ways to make it a bit better.",
-    "I designed this site from scratch, which was a good excuse to learn how all the pieces fit together. If you're curious how the intro works, there's a short write-up about it.",
+    "I designed this site, which was a good excuse to learn how all the pieces fit together. If you're curious how the intro works, there's a short write-up about it.",
   ],
+  // Phrases in the long bio that /about turns into links. The text has to match the paragraph exactly.
+  longLinks: [{ text: 'short write-up', href: '/writing/zooming-through-a-letter' }],
 };
 
 export const education: TimelineItem[] = [
@@ -43,18 +45,18 @@ export const education: TimelineItem[] = [
     title: 'RV PU College',
     subtitle: 'Pre-university: Physics, Chemistry, Mathematics and Computer Science',
     start: '2024-06',
-    end: '2026-05',
-    note: 'Maths, physics and chemistry at JEE Advanced level, alongside computer science.',
+    end: '2026-03',
+    note: 'Maths, physics and chemistry at JEE Advanced level, alongside computer science. In my Class 12 board exams I got 100/100 in maths and 98/100 in physics.',
   },
 ];
 
 // Dated: the build warns when this is more than 90 days old.
 export const currently = {
-  updated: '2026-10-04',
+  updated: '2026-10-13',
   items: [
     { label: 'building', text: 'this site, parjanya.me', href: '/projects/parjanya-me' },
-    { label: 'learning', text: 'something new; more on this soon', placeholder: true },
-    { label: 'reading', text: "Surely You're Joking, Mr. Feynman! and The Three-Body Problem", href: '/bookshelf' },
+    { label: 'learning', text: 'preparing for the Putnam (Dec 2026)' },
+    { label: 'reading', text: 'Fifty Challenging Problems in Probability and Flash Boys', href: '/bookshelf' },
   ] as CurrentlyItem[],
 };
 

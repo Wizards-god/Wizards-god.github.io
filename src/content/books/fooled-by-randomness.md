@@ -1,9 +1,7 @@
 ---
 title: "Fooled by Randomness"
 author: "Nassim Nicholas Taleb"
-year: 2025
-favorite: true
+status: planned
 tags: [markets, probability]
-reflection: A few thoughts on this one are coming soon.
-placeholder: true
+reflection: Thoughts once I've read it.
 ---

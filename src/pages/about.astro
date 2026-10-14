@@ -14,6 +14,14 @@ import { personJsonLd } from '../lib/seo';
 
 const awards = await getAwards();
 const currentItems = currently.items.filter((item) => shouldShow(item.placeholder));
+
+/** Splits a bio paragraph around the first of bio.longLinks it contains, so that phrase can be a link. */
+function splitAtLink(paragraph: string) {
+  const link = bio.longLinks.find((candidate) => paragraph.includes(candidate.text));
+  if (!link) return { before: paragraph, link: undefined, after: '' };
+  const start = paragraph.indexOf(link.text);
+  return { before: paragraph.slice(0, start), link, after: paragraph.slice(start + link.text.length) };
+}
 ---
 
 <BaseLayout
@@ -30,7 +38,22 @@ const currentItems = currently.items.filter((item) => shouldShow(item.placeholde
 
     <div class="about-intro">
       <div class="about-intro__text" data-enter style="--i: 2">
-        {bio.long.map((paragraph) => <p>{paragraph}</p>)}
+        {
+          bio.long.map((paragraph) => {
+            const { before, link, after } = splitAtLink(paragraph);
+            return (
+              <p>
+                {before}
+                {link && (
+                  <a href={link.href} class="link link--underlined">
+                    {link.text}
+                  </a>
+                )}
+                {after}
+              </p>
+            );
+          })
+        }
       </div>
       <div class="about-intro__photo framed-wrap" data-enter style="--i: 3">
         <span class="framed">
@@ -126,7 +149,7 @@ const currentItems = currently.items.filter((item) => shouldShow(item.placeholde
         <Icon name="book-open" size={24} />
         <span>
           <span class="shelf-link__title">Bookshelf</span>
-          <span class="shelf-link__text">What I'm reading now and what I've read.</span>
+          <span class="shelf-link__text">What I'm reading now and what's next.</span>
         </span>
         <Icon name="arrow-right" size={18} class="shelf-link__arrow" />
       </a>

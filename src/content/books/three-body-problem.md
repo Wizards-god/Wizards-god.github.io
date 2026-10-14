@@ -1,9 +1,7 @@
 ---
 title: "The Three-Body Problem"
 author: "Cixin Liu"
-year: 2026
-favorite: false
-reading: true
+status: planned
 tags: [fiction, sci-fi]
-reflection: Reading it now. Thoughts once I've finished.
+reflection: Thoughts once I've read it.
 ---

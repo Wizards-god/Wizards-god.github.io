@@ -1,9 +1,7 @@
 ---
 title: "Surely You're Joking, Mr. Feynman!"
 author: "Richard P. Feynman"
-year: 2026
-favorite: false
-reading: true
+status: planned
 tags: [physics, memoir]
-reflection: Reading it now. Thoughts once I've finished.
+reflection: Thoughts once I've read it.
 ---

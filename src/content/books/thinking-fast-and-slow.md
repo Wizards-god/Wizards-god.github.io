@@ -1,9 +1,7 @@
 ---
 title: "Thinking, Fast and Slow"
 author: "Daniel Kahneman"
-year: 2025
-favorite: true
+status: planned
 tags: [psychology]
-reflection: A short reflection is on its way.
-placeholder: true
+reflection: Thoughts once I've read it.
 ---

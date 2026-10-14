@@ -1,9 +1,7 @@
 ---
 title: "Flash Boys"
 author: "Michael Lewis"
-year: 2024
-favorite: false
+status: reading
 tags: [markets, history]
-reflection: A short reflection is on its way.
-placeholder: true
+reflection: Thoughts once I've finished.
 ---

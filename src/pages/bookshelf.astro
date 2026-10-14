@@ -7,12 +7,13 @@ import { site } from '../data/site';
 const LIMIT = 6;
 const books = await getBooks();
 const tags = [...new Set(books.flatMap((book) => book.data.tags))].sort();
-const years = [...new Set(books.map((book) => book.data.year))].sort((a, b) => b - a);
+// Only books I've finished have a year.
+const years = [...new Set(books.map((book) => book.data.year).filter((year) => year !== undefined))].sort((a, b) => b - a);
 ---
 
 <BaseLayout
   title="Bookshelf"
-  description="Books Parjanya Shankar has read, with a few sentences on each."
+  description="The books Parjanya Shankar is reading now and plans to read next."
   ogImage="/og/bookshelf.png"
 >
   <div class="page wrap">
@@ -20,7 +21,7 @@ const years = [...new Set(books.map((book) => book.data.year))].sort((a, b) => b
       <p class="eyebrow" data-enter style="--i: 0">bookshelf</p>
       <h1 class="page-title" data-enter style="--i: 1" tabindex="-1">Bookshelf</h1>
       <p class="lede" data-enter style="--i: 2">
-        What I'm reading now, then the books I've read, favourites first, with a line or two on each.
+        What I'm reading now, then what I plan to read next.
       </p>
     </header>
 
