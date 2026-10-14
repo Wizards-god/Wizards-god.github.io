@@ -33,8 +33,9 @@ I also wanted it to feel a little like me, so it has a charcoal palette, one war
 
 ## Results
 
-- It stays light: about 17 KB of compressed JavaScript for the whole site, and it does well in Lighthouse on both desktop and mobile.
-- Everything still works with JavaScript turned off. The animations are layered on top.
+- It stays light. Each page loads about 20 KB of bundled JavaScript, gzipped (18 KB with Brotli), plus 3 KB for the intro on the one visit where it plays. That leaves out two short inline scripts in each page's HTML.
+- On Lighthouse's desktop preset, the home page, the projects page and a writing post all scored 100 for performance, accessibility, best practices and SEO when I last ran it.
+- Almost everything still works with JavaScript turned off. The ask box, the theme switch, the copy-email button and the home page's scroll rail need it, so they're hidden. The animations are layered on top.
 - If your system asks for reduced motion, the intro becomes a short fade and page changes become a simple crossfade.
 
 ## Pipeline

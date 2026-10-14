@@ -8,8 +8,6 @@ draft: false
 
 When I was planning this site, I wanted the first thing you see to be my name, and then I wanted the name itself to become the way in. So the first time you open the site in a browser session, you get a "p" and a blinking full stop. The rest of my name types in, and then the page zooms into the second "a" until the hole in that letter fills the whole screen and the site is sitting right behind it.
 
-Here's how I built it, plus the one bit of maths that makes it feel right.
-
 ## The letters are paths, not text
 
 Web fonts take a moment to load, and I wanted the intro on screen from the very first frame. So my letters aren't text at all. When the site builds, a script I wrote opens the same font file the site uses (Geist Medium) with `opentype.js` and saves each character as an SVG path, already spaced out with the font's own advance widths and kerning.[^kerning]
@@ -34,21 +32,35 @@ In SVG that's `translate(cx cy) scale(s) translate(-cx -cy)`, and I write it to 
 
 ## How far to zoom
 
-The zoom is done once the hole covers the whole screen, which is exactly when all four corners of the viewport sit inside the counter. Every screen is different, so rather than hard-coding a number, I find the target scale when the page loads with a binary search:
+The zoom is done once the hole covers the whole screen, which is exactly when all four corners of the viewport sit inside the counter. Every screen is different, so rather than hard-coding a number, I work out the target scale when the page loads. I double the scale until the hole covers the screen, then binary-search the gap. This is the search from the intro's code, with the fallback for browsers that can't do it left out:
 
-```ts {4-6}
-function targetScale(counter: SVGPathElement, corners: DOMPoint[]) {
-  let lo = 1, hi = 2000;
-  for (let i = 0; i < 40; i++) {
-    const mid = (lo + hi) / 2;
-    const inside = corners.every((q) => counter.isPointInFill(toLocal(q, mid)));
-    inside ? (hi = mid) : (lo = mid);
+```ts {5-8}
+function findZoomScale() {
+  // `corners` holds the four screen corners, already converted to the word's SVG
+  // coordinates. (centreX, centreY) is the middle of the counter.
+
+  const coversScreen = (scale: number) =>
+    corners.every((corner) =>
+      counter.isPointInFill(new DOMPoint(centreX + (corner.x - centreX) / scale, centreY + (corner.y - centreY) / scale)),
+    );
+
+  // Double until we overshoot, then halve the gap 32 times.
+  let tooSmall = 1;
+  let bigEnough = 2;
+  while (!coversScreen(bigEnough)) {
+    tooSmall = bigEnough;
+    bigEnough *= 2;
   }
-  return hi * 1.1; // a little margin past "just covered"
+  for (let step = 0; step < 32; step++) {
+    const middle = (tooSmall + bigEnough) / 2;
+    if (coversScreen(middle)) bigEnough = middle;
+    else tooSmall = middle;
+  }
+  return bigEnough * 1.1; // a little past "only just covered"
 }
 ```
 
-`toLocal` inverts $T_s$ to map a screen corner back into the counter's own coordinates, and `isPointInFill` tells me whether that point lands inside the hole. On a 1440×900 laptop screen the answer comes out to about 83×, and on a 375×812 phone it's about 165×.
+`coversScreen` inverts $T_s$, mapping each screen corner back to the point of the unzoomed word that it lines up with at that scale. `isPointInFill` then tells me whether that point lands inside the hole. On a 1440×900 laptop screen the answer comes out to about 83×, and on a 375×812 phone it's about 165×.
 
 ## Why log space
 
