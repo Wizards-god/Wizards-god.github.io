@@ -11,7 +11,7 @@ export async function getStaticPaths() {
     { slug: 'about', card: { title: 'About', eyebrow: 'about', description: 'Computer Science at UIUC, Class of 2030, intended Maths minor.', path: '/about' } },
     { slug: 'projects', card: { title: 'Projects', eyebrow: 'projects', description: "Things I've built, each with a write-up.", path: '/projects' } },
     { slug: 'writing', card: { title: 'Writing', eyebrow: 'writing', description: 'Longer notes on things I have built and problems I have worked through.', path: '/writing' } },
-    { slug: 'coursework', card: { title: 'Coursework', eyebrow: 'coursework', description: 'Courses at the University of Illinois Urbana-Champaign, by semester.', path: '/coursework' } },
+    { slug: 'coursework', card: { title: 'Coursework', eyebrow: 'coursework', description: 'Courses at the University of Illinois Urbana-Champaign, by semester, plus advanced standing credit.', path: '/coursework' } },
     { slug: 'bookshelf', card: { title: 'Bookshelf', eyebrow: 'bookshelf', description: "What I'm reading now and what's next.", path: '/bookshelf' } },
     { slug: 'resume', card: { title: 'Resume', eyebrow: 'resume', description: 'Under construction. Back soon.', path: '/resume' } },
   ];
