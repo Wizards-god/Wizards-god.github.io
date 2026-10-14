@@ -52,11 +52,11 @@ export const education: TimelineItem[] = [
 
 // Dated: the build warns when this is more than 90 days old.
 export const currently = {
-  updated: '2026-10-13',
+  updated: '2026-10-14',
   items: [
     { label: 'building', text: 'this site, parjanya.me', href: '/projects/parjanya-me' },
     { label: 'learning', text: 'preparing for the Putnam (Dec 2026)' },
-    { label: 'reading', text: 'Fifty Challenging Problems in Probability and Flash Boys', href: '/bookshelf' },
+    { label: 'reading', text: "The Three-Body Problem and Surely You're Joking, Mr. Feynman!", href: '/bookshelf' },
   ] as CurrentlyItem[],
 };
 

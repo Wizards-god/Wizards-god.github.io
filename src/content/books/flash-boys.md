@@ -1,7 +1,7 @@
 ---
 title: "Flash Boys"
 author: "Michael Lewis"
-status: reading
+status: planned
 tags: [markets, history]
-reflection: Thoughts once I've finished.
+reflection: Thoughts once I've read it.
 ---

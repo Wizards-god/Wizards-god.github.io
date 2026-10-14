@@ -1,7 +1,7 @@
 ---
 title: "Fifty Challenging Problems in Probability"
 author: "Frederick Mosteller"
-status: reading
+status: planned
 tags: [maths, probability]
-reflection: Thoughts once I've finished.
+reflection: Thoughts once I've read it.
 ---
