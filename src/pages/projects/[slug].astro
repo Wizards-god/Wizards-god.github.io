@@ -6,6 +6,7 @@ import PlaceholderTag from '../../components/PlaceholderTag.astro';
 import Icon from '../../components/Icon.astro';
 import { getProjects, projectUrl } from '../../lib/content';
 import { monthYear } from '../../lib/format';
+import { projectJsonLd } from '../../lib/seo';
 
 export async function getStaticPaths() {
   const projects = await getProjects();
@@ -41,6 +42,7 @@ const links = [
   ogImage={`/og/projects/${project.id}.png`}
   type="article"
   published={details.date}
+  jsonLd={projectJsonLd(project, projectUrl(project), `/og/projects/${project.id}.png`)}
   back={{ href: '/projects', label: 'all projects' }}
 >
   <Fragment slot="header">

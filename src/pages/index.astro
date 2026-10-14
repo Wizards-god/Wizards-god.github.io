@@ -6,6 +6,7 @@ import HomeExperience from '../components/home/HomeExperience.astro';
 import HomeFeatured from '../components/home/HomeFeatured.astro';
 import HomeContact from '../components/home/HomeContact.astro';
 import { site, type HomeSection } from '../data/site';
+import { getAwards } from '../lib/content';
 import { personJsonLd, websiteJsonLd } from '../lib/seo';
 
 // Sections render in the order given by site.homeSections. Each one with a
@@ -17,9 +18,11 @@ const sections: Record<HomeSection, typeof HomeHero> = {
   featured: HomeFeatured,
   contact: HomeContact,
 };
+
+const awards = await getAwards();
 ---
 
-<BaseLayout ogImage="/og/home.png" jsonLd={[personJsonLd, websiteJsonLd]} scrollRail>
+<BaseLayout ogImage="/og/home.png" jsonLd={[personJsonLd(awards), websiteJsonLd]} scrollRail>
   {
     site.homeSections.map((key) => {
       const Section = sections[key];

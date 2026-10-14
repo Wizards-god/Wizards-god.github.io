@@ -11,6 +11,7 @@ import { transformerMetaHighlight, transformerNotationHighlight } from '@shikijs
 import { rehypeCodeBlocks } from './src/lib/rehype-code-blocks.mjs';
 import { siteDark, siteLight } from './src/lib/shiki-themes.mjs';
 import { siteChecks } from './src/integrations/site-checks.mjs';
+import { lastModified } from './src/lib/sitemap-dates.ts';
 
 export default defineConfig({
   site: 'https://parjanya.me',
@@ -20,7 +21,11 @@ export default defineConfig({
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
     mdx(),
-    sitemap({ filter: (page) => !/\/(404|429)\/?$/.test(page) }),
+    sitemap({
+      filter: (page) => !/\/(404|429)\/?$/.test(page),
+      // Each page's <lastmod>: see src/lib/sitemap-dates.ts.
+      serialize: (item) => ({ ...item, lastmod: lastModified(item.url) }),
+    }),
     siteChecks(),
   ],
   markdown: {

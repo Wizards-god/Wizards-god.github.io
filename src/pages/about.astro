@@ -10,7 +10,7 @@ import portrait from '../assets/portrait-placeholder.png';
 import { bio, education, currently, interests, languages } from '../data/about';
 import { getAwards, shouldShow } from '../lib/content';
 import { fullDate } from '../lib/format';
-import { personJsonLd } from '../lib/seo';
+import { profilePageJsonLd } from '../lib/seo';
 
 const awards = await getAwards();
 const currentItems = currently.items.filter((item) => shouldShow(item.placeholder));
@@ -28,7 +28,7 @@ function splitAtLink(paragraph: string) {
   title="About"
   description="About Parjanya Shankar: Computer Science at UIUC (Class of 2030, intended Maths minor), education, what I'm working on and reading, and awards and competitions."
   ogImage="/og/about.png"
-  jsonLd={[personJsonLd]}
+  jsonLd={[profilePageJsonLd(awards)]}
 >
   <div class="page wrap">
     <header class="about-head">
