@@ -1,0 +1,214 @@
+---
+// The home page's right-hand rail: a ruler showing how far down the page you
+// are, and a word for each section that flies between the bottom corner, the
+// rail and the top corner as you scroll. Only the ruler is drawn here; the
+// words are made from the page's [data-rail-label] sections, and everything
+// is moved by src/scripts/scroll-rail.ts.
+
+// A tick every 2% of the page, and a longer one every 10%.
+const TICK_EVERY = 2;
+const LONG_TICK_EVERY = 10;
+const ticks = Array.from({ length: 100 / TICK_EVERY + 1 }, (_, index) => index * TICK_EVERY);
+
+// One rolling column per digit of the percentage (up to "100").
+const DIGIT_COLUMNS = 3;
+const DIGITS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+---
+
+<div class="scroll-rail enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms" data-scroll-rail>
+  <div class="ruler" aria-hidden="true" data-rail-ruler>
+    {ticks.map((at) => <span class:list={['tick', { 'tick--long': at % LONG_TICK_EVERY === 0 }]} style={`--at: ${at}`} />)}
+
+    <!-- The needle marks where you are; the readout beside it counts the percent. -->
+    <div class="needle" data-rail-needle>
+      <span class="readout">
+        {
+          Array.from({ length: DIGIT_COLUMNS }, () => (
+            <span class="digit" data-rail-digit>
+              <span class="digit__strip">
+                {DIGITS.map((digit) => (
+                  <span>{digit}</span>
+                ))}
+              </span>
+            </span>
+          ))
+        }
+        <span>%</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- The section words are added here by the script, one link per section. -->
+  <nav class="words" aria-label="Sections on this page" data-rail-words></nav>
+</div>
+
+<style>
+  /* The ruler sits where the email used to: a 40px column, 40px in from the right. */
+  .ruler {
+    position: fixed;
+    top: calc(var(--header-h-small) + 20px);
+    bottom: 28px;
+    right: 40px;
+    z-index: var(--z-rails);
+    width: 40px;
+    /* It's also the scrollbar (see makeDraggable in the script), so it takes clicks and drags. */
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .ruler.is-dragging {
+    cursor: grabbing;
+  }
+
+  /* On wide screens the ruler stands in for the browser's scrollbar on this page,
+     so that one is hidden. The wheel, keyboard and touch all scroll as normal.
+     Only with JavaScript running, since that's what makes the ruler work. */
+  @media (min-width: 1024px) {
+    :global(html.js:has([data-scroll-rail])) {
+      scrollbar-width: none;
+    }
+    :global(html.js:has([data-scroll-rail])::-webkit-scrollbar) {
+      display: none;
+    }
+  }
+
+  /* Without JavaScript nothing would move, so the rail stays out of the way. */
+  :global(html:not(.js)) .scroll-rail {
+    display: none;
+  }
+
+  /* Ticks are drawn in from the outer edge, so the inner half stays clear for the words riding the rail. */
+  .tick {
+    position: absolute;
+    right: 0;
+    top: calc(var(--at) * 1%);
+    width: 6px;
+    height: 1px;
+    background: var(--faint);
+    opacity: 0.45;
+  }
+
+  .tick--long {
+    width: 12px;
+    opacity: 0.9;
+  }
+
+  .needle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 18px;
+    height: 1px;
+    background: var(--accent);
+    transition:
+      opacity var(--dur-ui) var(--ease-ui),
+      width var(--dur-ui) var(--ease-ui),
+      height var(--dur-ui) var(--ease-ui);
+  }
+
+  /* Kept out of the way at the very top of the page, unless you reach for it. */
+  .needle.is-quiet {
+    opacity: 0;
+  }
+
+  .ruler:hover .needle,
+  .ruler.is-dragging .needle {
+    width: 26px;
+    height: 2px;
+    opacity: 1;
+  }
+
+  /* The readout hangs just outside the ruler, in the margin by the window edge. */
+  .readout {
+    position: absolute;
+    left: calc(100% + 6px);
+    top: 50%;
+    display: flex;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1;
+    transform: translateY(-50%);
+  }
+
+  /* Each digit is a strip of 0 to 9 behind a one-digit window; the script sets --digit to roll it. */
+  .digit {
+    height: 1em;
+    overflow: hidden;
+    transition: opacity var(--dur-ui) var(--ease-ui);
+  }
+
+  .digit__strip {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(calc(var(--digit, 0) * -1em));
+    transition: transform calc(400ms * var(--slow)) var(--ease-out);
+  }
+
+  /* Leading zeros: "7%" rather than "007%". */
+  .digit.is-blank {
+    opacity: 0;
+  }
+
+  /* A full-window layer for the words. Only the letters themselves take clicks. */
+  .words {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-rails);
+    pointer-events: none;
+  }
+
+  /* Turned off by the script when the words wouldn't fit between the page and the rail.
+     Hidden rather than removed, so the script can still measure a letter. */
+  .scroll-rail:not([data-words='on']) .words {
+    visibility: hidden;
+  }
+
+  .words :global(.rail-word) {
+    color: var(--faint);
+    transition: color var(--dur-ui) var(--ease-ui);
+  }
+
+  .words :global(.rail-word[data-state='riding']) {
+    color: var(--muted);
+  }
+
+  .words :global(.rail-word[data-state='current']) {
+    color: var(--text);
+  }
+
+  .words :global(.rail-letter) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1;
+    white-space: pre;
+    pointer-events: auto;
+    will-change: transform;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .words :global(.rail-word:hover) {
+      color: var(--text);
+    }
+  }
+
+  .words :global(.rail-word:focus-visible) {
+    outline: none;
+    color: var(--text);
+  }
+
+  .words :global(.rail-word:focus-visible .rail-letter) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .digit__strip {
+      transition: none;
+    }
+  }
+</style>

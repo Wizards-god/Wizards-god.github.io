@@ -11,8 +11,11 @@ import Intro from '../components/Intro.astro';
 import Ask from '../components/Ask.astro';
 import { site } from '../data/site';
 
-type Props = SeoProps;
-const seo = Astro.props;
+type Props = SeoProps & {
+  /** Show the scroll rail on the right instead of the email (the home page does). */
+  scrollRail?: boolean;
+};
+const { scrollRail = false, ...seo } = Astro.props;
 ---
 
 <!doctype html>
@@ -27,7 +30,7 @@ const seo = Astro.props;
     <Overlays />
     <Header />
     <MobileMenu />
-    <SideRails />
+    <SideRails scrollRail={scrollRail} />
     <main id="main" tabindex="-1">
       <slot />
     </main>

@@ -1,6 +1,13 @@
 ---
 import { site } from '../data/site';
 import Icon from './Icon.astro';
+import ScrollRail from './ScrollRail.astro';
+
+interface Props {
+  /** The home page swaps the email on the right for the scroll rail. */
+  scrollRail?: boolean;
+}
+const { scrollRail = false } = Astro.props;
 
 const socials = [
   { ...site.socials.github, icon: 'github' as const },
@@ -9,8 +16,9 @@ const socials = [
 ];
 ---
 
-<aside class="rails" aria-label="Social links and email" transition:persist="rails">
-  <div class="rail rail--left enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms">
+<aside class="rails" aria-label={scrollRail ? 'Social links and page sections' : 'Social links and email'}>
+  <!-- Only the left rail persists across pages: the right one changes between the home page and the rest. -->
+  <div class="rail rail--left enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms" transition:persist="rail-left">
     <ul class="rail__list">
       {
         socials.map((social) => (
@@ -23,9 +31,15 @@ const socials = [
       }
     </ul>
   </div>
-  <div class="rail rail--right enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms">
-    <a href={`mailto:${site.email}`} class="rail__email">{site.email}</a>
-  </div>
+  {
+    scrollRail ? (
+      <ScrollRail />
+    ) : (
+      <div class="rail rail--right enter-chrome" style="--enter-anim: enter-fade; --enter-delay: 400ms">
+        <a href={`mailto:${site.email}`} class="rail__email">{site.email}</a>
+      </div>
+    )
+  }
 </aside>
 
 <style>

@@ -13,6 +13,7 @@ import { initInteractions } from './interactions';
 import { initFilters } from './filters';
 import { initAsk } from './ask';
 import { initAsciiChart } from './ascii-chart';
+import { initScrollRail } from './scroll-rail';
 
 declare global {
   interface Window {
@@ -37,6 +38,7 @@ document.addEventListener('page:init', () => {
   initTabs();
   initFilters();
   initAsciiChart();
+  initScrollRail();
 });
 document.addEventListener('page:revealed', () => startReveal());
 

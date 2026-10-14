@@ -9,7 +9,7 @@ const featured = await getFeaturedProjects(3);
 
 {
   featured.length > 0 && (
-    <section id="projects" class="section wrap" data-nav-section="projects" aria-labelledby="featured-title">
+    <section id="projects" class="section wrap" data-nav-section="projects" data-rail-label="projects" aria-labelledby="featured-title">
       <SectionHeading id="featured-title">Selected projects</SectionHeading>
       <div class="featured-list">
         {featured.map((project, index) => (
